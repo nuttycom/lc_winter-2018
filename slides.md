@@ -1,1426 +1,642 @@
-% Describing Data
-% Kris Nuttycombe (@nuttycom)
-% September, 2017
+% Type-Driven Development
+% Kris Nuttycombe (@nuttycom) - January, 2018
 
-# Goals
+# Resources
 
-* Explore the design of an FP library from start to finish
-* Introduce **free applicative functors** 
-* Use some **fix-point types** 
-* Simplify with **recursion schemes** 
-* Talk about the [**xenomorph**](https://github.com/nuttycom/xenomorph) library
-* Discover how what we write at kind `* -> *` is related to what we write at kind `*`
+- Slides: [nuttycom.github.io/lc_winter-2018-tdd](http://nuttycom.github.io/lc_winter-2018-tdd)
+- Sources: [github.com/nuttycom/lc_winter-2018-tdd](https://github.com/nuttycom/lc_winter-2018-tdd)
 
-# Prerequisites
+# Test-Driven Development
 
-* Sum types / GADTs
-* Product types
-* Applicative functors
-* Higher-kinded types / type constructors
-* Type-level lambdas / kind-projector
-* Natural transformations
-* Coproducts
+> - Write down a failing test case for a specific feature. This test will be incomplete and wrong.
+> - Write code until that test passes (solving the wrong problem).
+> - Iterate
 
-## Resources
-* Slides: [nuttycom.github.io/scala_world-2017](http://nuttycom.github.io/scala_world-2017)
-* Sources: [github.com/nuttycom/scala_world-2017](https://github.com/nuttycom/scala_world-2017)
-* Xenomorph: [github.com/nuttycom/xenomorph/tree/tutorial](https://github.com/nuttycom/xenomorph/tree/tutorial)
+# Type-Driven Development
 
-# Overview
+> - Write down the problem as some types - both data and operations. Avoid implementation concerns.
+> - Look at your type. 
+> - Does it represent all the states you need?  Write a proof that it does!
+> - Does it imply some states you don't want in your program? Introduce some new types to narrow things down (recurse!)
 
-## Problem: Serialization
+# Chicken Sexing
 
-* Having to maintain both serializers and deserializers is silly.
-* Problems exist with macros/generic programming approaches.
-* Legacy wire formats & evolving protocols can present challenges.
-
-<div class="incremental"><div>
-## Solution:
-
-* Build a description of the data structure as a value. 
-* Build interpreters for that description that produce serializers, 
-  deserializers, and more.
-</div></div>
+> In the book Incognito by David Eagelman, the author discusses the strange
+> nature of chicken sexing. This is the valuable process of separating female
+> and male chicks as soon as possible, because each sex has different diets and
+> endgames (most males are just destroyed). The mystery is that when you look
+> at the vent in the chick’s rear, some people just know which are female. It
+> is impossible to articulate, so the Japanese figured out how to teach this
+> inarticulable knowledge. The student would pick up a chick, examine its rear,
+> and toss it into a bin. The master would then say ‘yes’ or ‘no’ based on his
+> generally correct observation. After a few weeks, the student’s brain was
+> trained to masterful levels.  
+>
+> -- [Erik Falkenstein](http://www.businessinsider.com/the-incredible-intuition-of-professional-chicken-sexers-2012-3)
 
 <div class="notes">
-This is a composition of talks, Rob Norris and John De Goes
 
-What I'm presenting here are not really new ideas, just taking
-some existing ideas and composing them in a slightly new way
+This is all to say that what I'm going to be talking about and attempting to
+teach today is not something that I feel that I'm capable of reducing to a
+well-articulated process. Instead, I'm going to walk through the development
+of a small part of an application, describing what I see, with the hope that we can have 
+a conversation about the conclusions that I draw from the types in front of
+us. It's my hope that this can really be an interactive process, so please
+speak up whenever a question or a comment occurs to you. 
 
-The problem with generic programming approaches is that serialized
-form becomes coupled to the type being represented, making it harder 
-to change data structures. Your serialized form is your public API; it
-needs to be stable and to have a controlled upgrade path.
+Another reason I really like this anecdote and feel strongly that it's
+applicable to sofware development is that most of the time looking at a piece
+of software feels a lot like looking at a chicken's butt.
 
-Dissatisfaction-Driven Design
 </div>
 
-# Example
+# DAGs for Task Management
 
-A simple sums-of-products data type.
+<img src="./dags/tasks1.svg"/>
 
-~~~scala
-case class Person(
-  name: String, 
-  birthDate: Instant,
-  roles: Vector[Role]
-)
+<div class="notes">
 
-sealed trait Role
+I generally find that my talks go best when I have something concrete to talk
+about, so for today's talk I decided to build an application that, while small,
+is not intended as a toy.  This is something that I've been wanting to create
+for use with my own projects for quite a while.
 
-case object User extends Role
-final case class Administrator(department: String, subordinateCount: Long) extends Role
-~~~
+The underlying concept is that the most important feature of a task tracker for
+software development is to be able to keep track of the dependencies between
+tasks.  So often I've seen in my work the situation where I go to start
+implementing a feature, only to discover that the prerequisites for
+implementing that feature are missing or malformed. Yet, most task trackers are
+*lousy* at dealing with this situation - you start on something, realize that
+you ought to implement the prerequisites, have to create new tasks for those,
+mark the thing you're working on as paused, shove it into the backlog while the
+prerequisite goes to the top of the stack, and so on. What I want is the
+ability to capture this really common process of discovery in a tool, where all
+the dependencies between tasks are tracked and managed as essential
+information.  I want to be able to render the DAG of dependencies, and pick off
+something at the top - something with no dependencies - to work on.
 
-<div class="incremental">
-* Primitives
+Furthermore, I want to be able to add up the estimates for the dependencies
+of a task to get an estimate for the overall task. 
+
 </div>
-<div class="incremental">
-* Sequences
-</div>
-<div class="incremental">
-* Records
-</div>
-<div class="incremental">
-* Sum types
-</div>
 
-# Example JSON Representation
+# A simple task type
 
-~~~json
-{
-  "name": "Kris Nuttycombe",
-  "birthDate": 201470280000,
-  "roles": [
-    {
-      "admin": { 
-        "department": "windmill-tilting",
-        "subordinateCount": 0
-      }
-    } 
-  ]
-}
-~~~
-
-~~~json
-{
-  "name": "Jon Pretty",
-  "birthDate": 411436800000,
-  "roles": [
-    {
-      "user": {}
-    }
-  ]
-}
-~~~
-
-# Example Schema - Product
-
-~~~scala
-val personSchema: Schema[Prim, Person] = rec(
-  ^^(
-    required("name",      Prim.str,                            Person.name.asGetter),
-    required("birthDate", Prim.long composeIso isoLongInstant, Person.birthDate.asGetter),
-    required("roles",     Prim.arr(roleSchema),                Person.roles.asGetter)
-  )(Person.apply _)
-)
-
-val isoLongInstant = Iso(new Instant(_:Long))((_:Instant).getMillis)
-~~~
-
-To avoid type ascriptions, use all of [\@tpolecat](https://twitter.com/tpolecat)'s flags from [here](http://tpolecat.github.io/2017/04/25/scalac-flags.html)
- 
-# Example Schema - Sum
- 
-~~~scala
-val roleSchema: Schema[Prim, Role] = Schema.oneOf(
-  alt[Prim, Role, User.type](
-    "user", 
-    Schema.const(User),
-    User.prism
-  ) ::
-  alt[Prim, Role, Administrator](
-    "administrator", 
-    rec(
-      ^(
-        required("department",       Prim.str, Administrator.department.asGetter),
-        required("subordinateCount", Prim.int, Administrator.subordinateCount.asGetter)
-      )(Administrator.apply _)
-    ),
-    Administrator.prism
-  ) :: Nil
-)
-~~~
-
-# Primitives
-
-Use a GADT to describe the kinds of elements that can exist.
-
-~~~scala
-sealed trait JSchema[A]
-
-case object JNumT extends JSchema[Long]
-case object JBoolT extends JSchema[Boolean]
-case object JStrT extends JSchema[String]
-~~~
-
-# Primitive Serialization
-
-Use a GADT to describe the kinds of elements that can exist.
-
-~~~scala
-sealed trait JSchema[A]
-
-case object JNumT extends JSchema[Long]
-case object JBoolT extends JSchema[Boolean]
-case object JStrT extends JSchema[String]
-~~~
-
-~~~scala
-import argonaut.Json
-import argonaut.Json._
-
-
-def serialize[A](schema: JSchema[A], value: A): Json = {
-  schema match {
-    case JBoolT => jBool(value)
-    case JStrT  => jString(value)
-    case JNumT  => jNumber(value)
+~~~haskell
+data Task = Task 
+  { title :: Text
+  , description :: Text
+  , dependsOn :: [Task]
+  , state :: TaskState
+  , tags :: Set TaskTag
+  , estimate :: Int
   }
-}
- 
 ~~~
 
 <div class="notes">
-We can write a serializer that can render any type for which we
-have a schema to JSON.
+
+A tree-structured data type, pretty simple. This is of course also capable of
+representing a DAG, or even a graph with cycles. 
+
+Now, I know that you've come to a talk about type-driven development, and some
+of you might be thinking that I'm about to launch into some clever attempt at
+implementing type-level proofs that my dependency graphs don't contain cycles.
+That's not at all what I'm going to do. I like to write what I call "dumb,
+workmanlike Haskell." There are some properties, like acyclicity, that I'm just
+not interested in proving, particularly in situations like this where making
+updates to the structure of a given graph in response to user input is central
+to the use of the tool that I want to build. These graphs are going to be
+crossing a bunch of serialization boundaries, and I'm going to need to be able
+to capture lots of kinds of errors at those boundaries anyway, so the function
+that I eventually write to insert a node into a graph might as well make a
+trivially easy runtime check, return an error if it fails, and I can go on my
+way focusing on the "business problem" rather than getting tangled up in
+implementing something in the cleverest way possible where the ultimate gain is
+marginal at best.
+
+A lot of Haskell is like this - we have lots of options of how to implement
+things, and there's a lot of space for proving our programs correct at compile
+time.  I think this is awesome - this is why I use Haskell - but we also have
+the option to write really safe code that doesn't prove every single property.
+
+This is an acceptable first cut. We can start to implement some interesting
+functions with this much structure to work from.
+
+Some additional points:
+* I've left TaskState and TaskTag undefined for the moment because I don't know
+  what they should be yet. But they're distinct names.
+
 </div>
 
-# Primitive Parsing
+# Task Cost
 
-Create a parser by generating a function between
-a schema and an [argonaut](http://argonaut.io) DecodeJson instance.
+<img src="./dags/tasks2.svg"/>
 
-~~~scala
-sealed trait JSchema[A]
+# Task Cost
 
-case object JNumT extends JSchema[Long]
-case object JBoolT extends JSchema[Boolean]
-case object JStrT extends JSchema[String]
-~~~
-
-~~~scala
-import argonaut.DecodeJson
-import argonaut.DecodeJson._
-
-
-def decoder[A](schema: JSchema[A]): DecodeJson[A] = {
-  schema match {
-    case JBoolT => BooleanDecodeJson
-    case JStrT  => StringDecodeJson
-    case JNumT  => LongDecodeJson
+~~~haskell
+data Task = Task 
+  { title :: Text
+  , description :: Text
+  , dependsOn :: [Task]
+  , state :: TaskState
+  , tags :: Set TaskTag
+  , estimate :: Int
   }
-}
- 
 ~~~
 
-# Primitive Parsing
-
-Create a parser by generating a function between
-a schema and an [argonaut](http://argonaut.io) DecodeJson instance.
-
-~~~scala
-sealed trait JSchema[A]
-
-case object JNumT extends JSchema[Long]
-case object JBoolT extends JSchema[Boolean]
-case object JStrT extends JSchema[String]
+~~~haskell
+taskCost :: Task -> Int
 ~~~
 
-~~~scala
-import argonaut.DecodeJson
-import argonaut.DecodeJson._
+<div class="notes">
 
+One of the major benefits I'm looking to gain from using a DAG to represent
+tasks is that I want to be able to determine the total estimate cost of a task
+by aggregating the costs of its dependencies. So, the first thing I want to do
+is write down the type of this operation, given what I've got so far.
 
-  def apply[A](schema: JSchema[A]): DecodeJson[A] = {
-    schema match {
-      case JBoolT => BooleanDecodeJson
-      case JStrT  => StringDecodeJson
-      case JNumT  => LongDecodeJson
-    }
+</div>
+
+# Task Cost
+
+~~~haskell
+data Task = Task 
+  { title :: Text
+  , description :: Text
+  , dependsOn :: [Task]
+  , state :: TaskState
+  , tags :: Set TaskTag
+  , estimate :: Int
   }
+~~~
+
+~~~haskell
+taskCost :: Task -> Int
+taskCost task = 
+  estimate task + sum (fmap taskCost (dependsOn task))
+~~~
+
+<div class="notes">
+Here's a proof that this type is adequate to capture the operation I want. 
+However, it's a little bit too big. Here's another program that satisfies
+this type:
+</div>
+
+<div class="incremental">
+~~~haskell
+taskCost :: Task -> Int
+taskCost task = length $ dependsOn task
+~~~
+</div>
+
+# Prune the space of possible implementations
+
+~~~haskell
+data Task n = Task 
+  { title :: Text
+  , description :: Text
+  , dependsOn :: [Task n]
+  , state :: TaskState
+  , tags :: Set TaskTag
+  , estimate :: n
+  }
+~~~
+
+~~~haskell
+taskCost :: (Monoid n) => Task n -> n
+taskCost task = 
+  estimate task <> foldMap taskCost (dependsOn task)
+~~~
+
+<div class="notes">
+This is an improvement, for sure, but the type is *still* too big. The
+following implementation is pathological, but it illustrates an
+important point. Anywhere that a type can imply some sort of default
+value, you have to worry that you might be getting the default rather
+than a real value. So, let's prune off that extra bit of state space.
+</div>
+
+<div class="incremental">
+~~~haskell
+taskCost :: Task -> n
+taskCost = const mempty
+~~~
+</div>
+
+# Get rid of every operation you don't need
+
+~~~haskell
+data Task n = Task 
+  { title :: Text
+  , description :: Text
+  , dependsOn :: [Task n]
+  , state :: TaskState
+  , tags :: Set TaskTag
+  , estimate :: n
+  }
+~~~
+
+~~~haskell
+taskCost :: (Semigroup n) => Task n -> n
+taskCost task = 
+  sconcat (estimate task :| fmap taskCost (dependsOn task))
+~~~
+
+<div class="notes">
+
+This type is pretty representative of the operation we want to perform.
+It's a good business-domain level representation, and we can stop here
+for now.
+
+</div>
+
+# Storage
+
+<img src="./dags/tasks3.svg"/>
+
+# Storage
+
+~~~haskell
+data Task n = Task 
+  { title :: Text
+  , description :: Text
+  , dependsOn :: [Task n]
+  , state :: TaskState
+  , tags :: Set TaskTag
+  , estimate :: n 
+  } 
+~~~
+
+~~~haskell
+newtype TaskStore n = TaskStore { unTaskStore :: Map TaskRef (TaskF n) }
+
+findTask :: TaskStore n 
+         -> TaskRef 
+         -> Maybe (Task n)
   
 ~~~
 
-# Primitive Parsing
-
-Create a parser by generating a ~~function~~ natural transformation between
-a schema and a DecodeJson instance.
-
-~~~scala
-sealed trait JSchema[A]
-
-case object JNumT extends JSchema[Long]
-case object JBoolT extends JSchema[Boolean]
-case object JStrT extends JSchema[String]
-~~~
-
-~~~scala
-import argonaut.DecodeJson
-import argonaut.DecodeJson._
-
-val decoder = new (JSchema ~> DecodeJson) {
-  def apply[A](schema: JSchema[A]): DecodeJson[A] = {
-    schema match {
-      case JBoolT => BooleanDecodeJson
-      case JStrT  => StringDecodeJson
-      case JNumT  => LongDecodeJson
-    }
-  }
-}
-~~~
-
-# Natural Transformations
-
-With a little rearranging, we can also make serialization a natural transformation.
-
-~~~scala
-def serialize[A](schema: JSchema[A], value: A): Json
-~~~
-
-# Natural Transformations
-
-With a little rearranging, we can also make serialization a natural transformation.
-
-~~~scala
-def serialize[A](schema: JSchema[A]): A => Json
-~~~
-
-<div class="incremental">
-~~~scala
-val serializer: JSchema ~> (? => Json)
-~~~
-</div>
-
-<div class="incremental">
-~~~scala
-val serializer = new (JSchema ~> (? => Json)) {
-  def apply[A](schema: JSchema[A]): A => Json = {
-    schema match {
-      case JBoolT => jBool(_)
-      case JStrT  => jString(_)
-      case JNumT  => jNumber(_)
-    }
-  }
-}
-~~~
-</div>
-
-# Natural Transformations
-
-When we're working at the level of descriptions of data,
-what we end up writing are natural transformations 
-between our description and value-level functions.
-
-~~~scala
-val serializer: JSchema ~> (? => Json)
-~~~
-
-~~~scala
-val decoder: JSchema ~> JsonDecoder
-~~~
-
-# Natural Transformations
-
-When we're working at the level of descriptions of data,
-what we end up writing are natural transformations 
-between our description and value-level functions.
-
-~~~scala
-val serializer: JSchema ~> (? => Json)
-~~~
-
-~~~scala
-val decoder: JSchema ~> (Json => Either[ParseError, ?])
-~~~
-
-# Sequences
-
-Sequences are simple to describe because the only thing you need to represent
-is the type of the element. 
-
-~~~scala
-case class JVecT[A](elemType: JSchema[A]) extends JSchema[Vector[A]]
-~~~
-
-<div class="incremental">
-~~~scala
-val boolsSchema: JSchema[Vector[Boolean]] = JVecT(JBoolT)
-~~~
-</div>
-
-<div class="incremental">
-~~~scala
-val serializer = new (JSchema ~> (? => Json)) = {
-  def apply[A](schema: JSchema[A]): A => Json = {
-    schema match {
-      case JVecT(elemSchema) => 
-        value => jArray(value.map(serializer(elemSchema)))
-      //...
-    }
-  }
-}
-~~~
-</div>
-
-# Sequence Parsing
-
-Sequences are simple to describe because the only thing you need to represent
-is the type of the element. 
-
-~~~scala
-case class JVecT[A](elemType: JSchema[A]) extends JSchema[Vector[A]]
-~~~
-
-~~~scala
-val boolsSchema: JSchema[Vector[Boolean]] = JVecT(JBoolT)
-~~~
-
-~~~scala
-val decoder = new (JSchema ~> DecodeJson) {
-  def apply[A](schema: JSchema[A]) = {
-    schema match {
-      case JVecT(elemSchema) => 
-        VectorDecodeJson(decoder(elemSchema))
-      //...
-    }
-  }
-}
-~~~
-
-# Records
-
-For records, however, we have to be able to relate schema for
-multiple values of different types.
-
-~~~scala
-case class Person(
-  name: String, 
-  birthDate: Instant
-)
-~~~
-
-<div class="incremental">
-~~~scala
-def liftA2[A, B, C, F[_]: Applicative](fa: F[A], fb: F[B])(f: (A, B) => C): F[C]
-~~~
-</div>
-
-<div class="incremental">
-~~~scala
-val personSchema: JSchema[Person] = liftA2(JStrT, JNumT) { Person.apply _ }
-~~~
-</div>
-
-# Records
-
-So, how do we define Applicative for this data type?
-
-~~~scala
-sealed trait JSchema[A]
-
-case object JStrT extends JSchema[String]
-case object JNumT extends JSchema[Long]
-case object JBoolT extends JSchema[Boolean]
-
-case class JVecT[A](elemType: JSchema[A]) extends JSchema[Vector[A]]
-~~~
-
-<div class="incremental">
-~~~scala
-trait Applicative[F[_]] {
-  def pure[A](a: A): F[A]
-  def map[A, B](fa: F[A])(f: A => B): F[B]
-  def ap[A, B](fa: F[A])(ff: F[A => B]): F[B]
-}
-~~~
-
-`pure` and `map` don't make any sense!
-</div>
-
-# Records, Take 2
-
-We need an applicative functor, but maybe not for the whole schema type.
-What about just for the record (product) types?
-
-~~~scala
-case class JObjT[A](props: Props[A]) extends JSchema[A]
-~~~
-
-<div class="incremental"><div>
-To define our record builder first define a class that captures
-the name and the schema for a single property. 
-
-~~~scala
-case class PropSchema[O, A](fieldName: String, valueSchema: JSchema[A], accessor: O => A)
-~~~
-</div></div>
-
-<div class="incremental"><div>
-Now, wrap **that** up in a data structure for which we can define the applicative
-operations.
-
-~~~scala
-sealed trait Props[O, A] 
-
-case class ApProps[O, A, B](
-  prop: PropSchema[O, B], 
-  rest: Props[O, B => A]
-) extends Props[O, A]
-
-case class PureProps[O, A](a: A) extends Props[O, A]
-~~~
-</div></div>
-
 <div class="notes">
-This is also why we don't define Pure as a member of our base algebra. We don't need 
-the other property information - the field name and the accessor - for every 
-constructor.
+
+Here's the operation that I want to be able perform. I want some storage
+for this thing!  A number of people to be able to use this task tracking tool
+concurrently in the process of managing a project.
+
+The problem right now is that if I have some collection of task trees, and I
+want to update a particular task in some fashion, I want to be able to find,
+and later refer, to that task by some sort of handle that is independent of the
+data of the task itself.
+
+Adding this operation, however, makes me realize something. The task type 
+we have here is a little awkward for using in this context - a task value
+carries around with it all of its dependencies. That's going to make things
+rough when we have tasks in storage - if I have a reference to both a parent
+and its child, and I update the value at the child reference, nothing happens 
+to the parent. It retains its old reference. 
+
+This ultimately means that I need these references to be stable over time, 
+independent of structural equality of tasks. 
+
 </div>
 
+# Storage
 
-# Records, Take 2
+~~~haskell
+data Task n = Task 
+  { title :: Text
+  , description :: Text
+  , dependsOn :: [TaskRef]
+  , state :: TaskState
+  , tags :: Set TaskTag
+  , estimate :: n 
+  } 
+~~~
 
-~~~scala
-def applicative[O] = new Applicative[Props[O, ?]] {
-  def point[A](a: => A): Props[O, A] = PureProps(a)
+~~~haskell
+newtype TaskStore n = TaskStore { unTaskStore :: Map TaskRef (TaskF n) }
 
-  override def map[A, B](fa: Props[O, A])(f: A => B): Props[O, B] = {
-    fa match {
-      case PureProps(a) => PureProps(f(a))
-      case ApProps(prop, rest) => ApProps(prop, map(rest)(f compose _))
-    }
-  }
-
-  def ap[A,B](fa: => Props[O, A])(ff: => Props[O, A => B]): Props[O, B] = {
-    def flip[I, J, K](f: I => (J => K)) = (j: J) => (i: I) => f(i)(j)
-
-    ff match {
-      case PureProps(f) => map(fa)(f)
-
-      case aprb: ApProps[O, (A => B), i] =>
-        ApProps(aprb.hd, ap(fa)(map(aprb.tl)(flip[i, A, B])))
-    }
-  }
-}
+findTask :: TaskStore n 
+         -> TaskRef 
+         -> Maybe (Task n)
+  
 ~~~
 
 <div class="notes">
-So, is this thing applicative? Well, the easiest way to find out is to go ahead and
-see if you can just implement the Applicative typeclass in a way that makes sense.
+
+The first thing to do here is to remove the direct recursion from the structure
+of the task. Instead, all of our relationships between tasks will be
+intermediated by the data storage system.
+
 </div>
 
-# Records, Take 2
-~~~scala
-sealed trait Props[O, A] 
+# Storage
 
-case class PureProps[O, A](a: A) extends Props[O, A]
-
-case class ApProps[O, A, B](
-  prop: PropSchema[O, B], 
-  rest: Props[O, B => A]
-) extends Props[O, A]
+~~~haskell
+data TaskF n a = TaskF 
+  { title :: Text
+  , description :: Text
+  , dependsOn :: [a]
+  , state :: TaskState
+  , tags :: Set TaskTag
+  , estimate :: n 
+  } 
 ~~~
 
-~~~scala
-case class JObjT[A](props: Props[A, A]) extends JSchema[A]
+~~~haskell
+newtype TaskStore n a = TaskStore { unTaskStore :: Map a (TaskF n a) }
 
-case class PropSchema[O, A](fieldName: String, valueSchema: JSchema[A], accessor: O => A)
+findTaskF :: (Ord a) 
+          => TaskStore n a 
+          -> a 
+          -> Maybe (TaskF n a)
+  
 ~~~
 
 <div class="notes">
-Now, this would work fine. But there's something to notice about Props - we could
-add a bit of abstraction here by making the PropSchema constructor a type variable 
-instead.
+
+If I want to write a proof that the `find` function is adequate, I'll need
+to work out the details of TaskRef, in order to provide an ordering. 
+However, I don't really want to bother with that right now. So let's just
+defer that decision a bit.
+
 </div>
 
-# Records, Take 2
+# Storage
 
-~~~scala
-sealed trait Props[F[_, _], O, A] 
-
-case class PureProps[F[_, _], O, A](a: A) extends Props[F, O, A]
-
-case class ApProps[F[_, _], O, A, B](
-  prop: F[O, B], 
-  rest: Props[F, O, B => A]
-) extends Props[F, O, A]
+~~~haskell
+data TaskF n a = TaskF 
+  { title :: Text
+  , description :: Text
+  , dependsOn :: [a]
+  , state :: TaskState
+  , tags :: Set TaskTag
+  , estimate :: n 
+  } 
 ~~~
 
-~~~scala
-case class JObjT[A](props: Props[PropSchema, A, A]) extends JSchema[A]
+~~~haskell
+newtype TaskStore n a = TaskStore { unTaskStore :: Map a (TaskF n a) }
 
-case class PropSchema[O, A](fieldName: String, valueSchema: JSchema[A], accessor: O => A)
+findTaskF :: (Ord a) 
+          => TaskStore n a 
+          -> a 
+          -> Maybe (TaskF n a)
+findTaskF = flip lookup . unTaskStore
+~~~
+
+# Oops.
+
+~~~
+/Users/nuttycom/personal/lc_winter-2018-tdd/src/Task2.hs:29:44: error:
+    • Couldn't match type ‘a’ with ‘TaskF n a0’
+      ‘a’ is a rigid type variable bound by
+        the type signature for:
+          taskCost :: forall n a. Semigroup n => TaskF n a -> n
+        at src/Task2.hs:27:1-43
+      Expected type: [TaskF n a0]
+        Actual type: [a]
+    • In the second argument of ‘fmap’, namely ‘(dependsOn task)’
+      In the second argument of ‘(:|)’, namely
+        ‘fmap taskCost (dependsOn task)’
+      In the first argument of ‘sconcat’, namely
+        ‘(estimate task :| fmap taskCost (dependsOn task))’
+    • Relevant bindings include
+        task :: TaskF n a (bound at src/Task2.hs:28:10)
+        taskCost :: TaskF n a -> n (bound at src/Task2.hs:28:1)
+   |
+29 |   sconcat (estimate task :| fmap taskCost (dependsOn task))
+   |                                            ^^^^^^^^^^^^^^
 ~~~
 
 <div class="notes">
-That `O` looks kind of superfluous.
+
+The change that we've made to our task type means that both the signature of
+our taskCost function, and its proof of being valid, are no longer compiling!
+So, we have to fix that.
+
 </div>
 
-# Records, Take 2
+# Oops.
 
-~~~scala
-sealed trait Props[F[_], A] 
+<img src="./dags/tasks4.svg"/>
 
-case class PureProps[F[_], A](a: A) extends Props[F, A]
+# Fixing taskCost
 
-case class ApProps[F[_], A, B](
-  prop: F[B], 
-  rest: Props[F, B => A]
-) extends Props[F, A]
-~~~
-
-~~~scala
-case class JObjT[A](props: Props[PropSchema[A, ?], A]) extends JSchema[A]
-
-case class PropSchema[O, A](fieldName: String, valueSchema: JSchema[A], accessor: O => A)
-~~~
-
-# Records, Take 3
-
-~~~scala
-sealed trait FreeAp[F[_], A] 
-
-case class Pure[F[_], A](a: A) extends FreeAp[F, A]
-
-case class Ap[F[_], A, B](
-  head: F[B], 
-  tail: FreeAp[F, B => A]
-) extends FreeAp[F, A]
-~~~
-
-~~~scala
-case class JObjT[A](props: FreeAp[PropSchema[A, ?], A]) extends JSchema[A]
-
-case class PropSchema[O, A](fieldName: String, valueSchema: JSchema[A], accessor: O => A)
-~~~
-
-# Records, Take 3
-
-~~~scala
-import scalaz.FreeAp
-
-case class JObjT[A](props: FreeAp[PropSchema[A, ?], A]) extends JSchema[A]
-
-case class PropSchema[O, A](fieldName: String, valueSchema: JSchema[A], accessor: O => A)
-~~~
-
-# Record serialization
-
-~~~scala
-  def serializeObj[A](rb: FreeAp[PropSchema[A, ?], A], value: A): Json = {
-    jObject(
-      rb.foldMap[State[JsonObject, ?]](
-        new (PropSchema[A, ?] ~> State[JsonObject, ?]) {
-          def apply[B](ps: PropSchema[A, B]): State[JsonObject, B] = {
-            val elem: B = ps.accessor(value)
-            for {
-              _ <- modify((_: JsonObject) + (ps.fieldName, serializer(ps.valueSchema)(elem)))
-            } yield elem
-          }
-        }
-      ).exec(JsonObject.empty)
-    )
-  }
+~~~haskell
+taskCost :: (Semigroup n) => Task n -> n
+taskCost task = 
+  sconcat (estimate task :| fmap taskCost (dependsOn task))
 ~~~
 
 <div class="incremental">
-~~~scala
-val serializer = new (JSchema ~> (? => Json)) = {
-  def apply[A](schema: JSchema[A]): A => Json = {
-    schema match {
-      case JObjT(fa) => serializeObj(fa, _: A)
-      //...
-    }
-  }
-}
+~~~haskell
+findTaskF :: (Ord a) 
+          => TaskStore n a 
+          -> a 
+          -> Maybe (TaskF n a)
 ~~~
 </div>
-
-# Record decoding
-
-~~~scala
-  def decodeObj[A](rb: FreeAp[PropSchema[A, ?], A]): DecodeJson[A] = {
-    implicit val djap: Applicative[DecodeJson] = new Applicative[DecodeJson] {
-      def point[A](a: => A) = DecodeJson(_ => DecodeResult.ok(a))
-      def ap[A, B](fa: => DecodeJson[A])(ff: => DecodeJson[A => B]): DecodeJson[B] = {
-        fa.flatMap(a => ff.map(_(a)))
-      }
-    }
-
-    rb.foldMap(
-      new (PropSchema[A, ?] ~> DecodeJson) {
-        def apply[B](ps: PropSchema[A, B]): DecodeJson[B] = DecodeJson(
-          _.downField(ps.fieldName).as(decoder(ps.valueSchema))
-        )
-      }
-    )
-  }
-~~~
 
 <div class="incremental">
-~~~scala
-val decoder = new (JSchema ~> DecodeJson) {
-  def apply[A](schema: JSchema[A]) = {
-    schema match {
-      case JObjT(rb) => decodeObj(rb, _: A)
-      //...
-    }
-  }
-}
+~~~haskell
+taskCost :: (Semigroup n, Ord a) 
+         => TaskStore n a 
+         -> TaskF n a 
+         -> n
 ~~~
 </div>
 
-# Sum types
-We represent sum types as a list of alternatives.
+# Fixing taskCost
 
-Each constructor of the sum type is associated with a value that
-maps from the arguments demanded by that constructor to a value
-of the sum type. 
-
-~~~scala
-case class JSumT[A](alternatives: List[Alt[A, B] forSome { type B }]) extends JSchema[A]
-
-case class Alt[A, B](id: String, base: JSchema[B], review: B => A, preview: A => Option[B])
+~~~haskell
+taskCost :: (Semigroup n) => Task n -> n
+taskCost task = 
+  sconcat (estimate task :| fmap taskCost (dependsOn task))
 ~~~
 
-<div class="incremental">
-The combination of 'review' and 'preview' is better expressed as a prism.
-
-~~~scala
-case class JSumT[A](alternatives: List[Alt[A, B] forSome { type B }]) extends JSchema[A]
-
-case class Alt[A, B](id: String, base: JSchema[B], prism: Prism[A, B])
-~~~
-</div>
-
-# Sum types
-~~~scala
-case class JSumT[A](alternatives: List[Alt[A, B] forSome { type B }]) extends JSchema[A]
-
-case class Alt[A, B](id: String, base: JSchema[B], prism: Prism[A, B])
+~~~haskell
+findTaskF :: (Ord a) 
+          => TaskStore n a 
+          -> a 
+          -> Maybe (TaskF n a)
 ~~~
 
-<div class="incremental">
-~~~scala
-import monocle.macros._
-
-case object User extends Role {
-  val prism = GenPrism[Role, User.type]
-}
-
-// "user": {}
-
-val userRoleAlt = Alt[Role, Unit](
-  "user", 
-  JObjT(FreeAp.pure(())), 
-  User.prism composeIso GenIso.unit[User.type]
-)
-~~~
-</div>
-
-# Sum types
-
-~~~scala
-case class JSumT[A](alternatives: List[Alt[A, B] forSome { type B }]) extends JSchema[A]
-
-case class Alt[A, B](id: String, base: JSchema[B], prism: Prism[A, B])
-~~~
-
-~~~scala
-import monocle.macros._
-
-final case class Administrator(department: String, subordinateCount: Long) extends Role
-object Administrator {
-  val prism = GenPrism[Role, Administrator]
-}
-
-// { "admin": { "department": "windmill-tilting", "subordinateCount": 0 } } 
-
-val adminRoleAlt = Alt[Role, Administrator](
-  "admin", 
-  JObjT(
-    ^(
-      FreeAp.lift(PropSchema("department", JStrT, (_:Administrator).department)),
-      FreeAp.lift(PropSchema("subordinateCount", JNumT, (_:Administrator).subordinateCount)),
-    )(Administrator.apply _)
-  ),
-  Administrator.prism 
-)
-~~~
-
-# Sum types
-
-~~~scala
-val roleSchema: JSchema[Role] = JSumT(userRoleAlt :: adminRoleAlt :: Nil)
-~~~
-
-# Sum type serialization
-
-~~~scala
-val serializer = new (JSchema ~> (? => Json)) = {
-  def apply[A](schema: JSchema[A]): A => Json = {
-    schema match {
-      case JSumT(alts) => 
-        (value: A) => alts.flatMap({
-          case Alt(id, base, prism) => 
-            prism.getOption(value).map(serializer(base)).toList map { json =>
-              jObject(JsonObject.single(id, json))
-            }
-        }).head
-
-      //...
-    }
-}
+~~~haskell
+taskCost :: (Semigroup n, Ord a) 
+         => TaskStore n a 
+         -> TaskF n a 
+         -> n
+taskCost s task = 
+  let deps = catMaybes . fmap (findTaskF s) $ dependsOn task
+  in  sconcat (estimate task :| fmap (taskCost s) deps)
 ~~~
 
 <div class="notes">
-The partiality of results.head is actually not as bad as it looks; the reason 
-that it's *arguably* excusable is that if you encounter a case where no
-alternative is able to satisfy the serialization of that value, your 
-program *should* just explode. In an ideal world we'd be able to statically
-check the inhabitants of that array of alternatives against the constructors
-of the algebraic data type that we're building a schema for, but unfortunately
-the set of constructors is not a first-class value in any language that I 
-know of.
+
+Now, maybe it's just me, but this strikes me as kind of gross. Our taskCost
+function suddenly got a lot more complicated - and any such function that's
+recursively traversing this tree is going to be similarly complicated. We're
+mixing concerns, if we decide to change our TaskStore we're going to break 
+things again - we really would like to recover some of our former utility.
+
+What's more, there's something really important that got glossed over here.
+What happens if we run into an invalid reference for some reason? It ends
+up just being silently ignored by `catMaybes` there. That's awful, if there
+are invalid references hanging around I want to know about them. 
+
 </div>
 
-# Sum type parsing
+# Fixing taskCost
 
-~~~scala
-val decoder = new (JSchema ~> DecodeJson) {
-  def apply[A](schema: JSchema[A]) = {
-    schema match {
-      //...
-      case JSumT(alts) => DecodeJson { (c: HCursor) => 
-        val results = for {
-          fields <- c.fields.toList
-          altResult <- alts flatMap {
-            case Alt(id, base, prism) =>
-              fields.exists(_ == id).option(
-                c.downField(id).as(decoder(base)).map(prism.reverseGet)
-              ).toList
-          }
-        } yield altResult 
-
-        val altIds = alts.map(_.id)
-        results match {
-          case x :: Nil => x
-          case Nil => DecodeResult.fail(s"No fields found matching any of ${altIds}", c.history)
-          case xs => DecodeResult.fail(s"More than one matching field found among ${altIds}", c.history)
-        }
-      }
-    }
-  }
-}
-~~~
-
-# What else can we do?
-
-* ScalaCheck [Gen](https://github.com/rickynils/scalacheck/blob/master/src/main/scala/org/scalacheck/Gen.scala) instances
-* Binary serialization using [scodec](https://github.com/scodec/scodec)
-* [User interfaces](https://app-dev.pellucid.com)
-* Interpret to whatever Applicative you want, really.
-
-<div class="notes">
-Franco Ponticelli, a coworker of mine, wrote a schema interpreter that
-he uses to serialize values to database tables... and provides the 'CREATE TABLE'
-statements accordingly.
-</div>
-
-# So... what's the catch?
-
-<div class="incremental">
-* Fixed set of primitives is overly limiting
-</div>
-<div class="incremental">
-* Unable to provide additional metadata about values/fields 
-</div>
-
-# Problem 1: Primitives
-
-~~~scala
-sealed trait JSchema[A]
-
-case object JStrT extends JSchema[String]
-case object JNumT extends JSchema[Long]
-case object JBoolT extends JSchema[Boolean]
-
-
-case class JVecT[A](elemType: JSchema[A]) extends JSchema[Vector[A]]
-
-case class JSumT[A](alternatives: List[Alt[A, B] forSome { type B }]) extends JSchema[A]
-
-case class JObjT[A](props: FreeAp[PropSchema[A, ?], A]) extends JSchema[A]
-~~~
-
-# Problem 1: Primitives
-
-~~~scala
-sealed trait JSchema[A]
-
-case object JStrT extends JSchema[String]
-case object JNumT extends JSchema[Long]
-case object JBoolT extends JSchema[Boolean]
-case object JDateT extends JSchema[DateTime]
-
-case class JVecT[A](elemType: JSchema[A]) extends JSchema[Vector[A]]
-
-case class JSumT[A](alternatives: List[Alt[A, B] forSome { type B }]) extends JSchema[A]
-
-case class JObjT[A](props: FreeAp[PropSchema[A, ?], A]) extends JSchema[A]
-~~~
-
-# Problem 1: Primitives
-
-~~~scala
-sealed trait JSchema[P[_], A]
-
-case class JPrimT[P[_], A](prim: P[A]) extends JSchema[P, A]
-
-
-
-
-case class JVecT[P[_], A](elemType: JSchema[P, A]) extends JSchema[P, Vector[A]]
-
-case class JSumT[P[_], A](alternatives: List[Alt[P, A, B] forSome { type B }]) extends JSchema[P, A]
-
-case class JObjT[P[_], A](props: FreeAp[PropSchema[P, A, ?], A]) extends JSchema[P, A]
+~~~haskell
+data TaskF n a = TaskF
+  { title :: Text
+  , description :: Text
+  , dependsOn :: [a]
+  , state :: TaskState
+  , tags :: Set TaskTag
+  , estimate :: n
+  } deriving Functor
 ~~~
 
 <div class="incremental">
-~~~scala
-sealed trait JsonPrim[A]
-case object JStrT extends JsonPrim[String]
-case object JNumT extends JsonPrim[Long]
-case object JBoolT extends JsonPrim[Boolean]
-case object JDateT extends JsonPrim[DateTime]
+~~~haskell
+-- from Data.Functor.Foldable 
+newtype Fix f = Fix { unfix :: f (Fix f) }
 ~~~
 </div>
 
 <div class="incremental">
-~~~scala
-type MySchema[A] = JSchema[JsonPrim, A]
-~~~
-</div>
-
-# Problem 1: Primitives
-
-~~~scala
-trait ToJson[S[_]] {
-  def serializer: S ~> (? => Json)
-}
-
-trait FromJson[S[_]] {
-  def decoder: S ~> DecodeJson
-}
-~~~
-
-# Problem 1: Primitives
-
-~~~scala
-implicit def jSchemaToJson[P[_]: ToJson] = new ToJson[JSchema[P, ?]] {
-  val serializer = new (JSchema[P, ?] ~> (? => Json)) {
-    def apply[A](schema: JSchema[P, A]): A => Json = {
-      schema match {
-        case JPrimT(p) => implicitly[ToJson[P]].serializer(p)
-
-        // handling the other constructors stays the same
-      }
-    }
-  }
-}
-~~~
-
-<div class="incremental">
-~~~scala
-implicit val JsonPrimToJson = new ToJson[JsonPrim] {
-  val serializer = new (JsonPrim ~> (? => Json)) {
-    def apply[A](p: JsonPrim[A]): A => Json = {
-      schema match {
-        case JStrT  => jString(_)
-        case JNumT  => jNumber(_)
-        case JBoolT => jBool(_)
-        case JDateT => (dt: DateTime) => jString(dt.toString)
-      }
-    }
-  }
-}
-~~~
-</div>
-
-# Coproducts
-
-~~~scala
-implicit def primCoToJson[P[_]: ToJson, Q[_]: ToJson] = new ToJson[Coproduct[P, Q, ?]] {
-  val serializer = new (Coproduct[P, Q, ?] ~> (A => Json)) {
-    def apply[A](p: Coproduct[P, Q, A]): A => Json = {
-      p.run.fold(
-        implicitly[ToJson[P]].serializer,
-        implicitly[ToJson[Q]].serializer
-      )
-    }
-  }
-}
-
-implicit def primCoFromJson[P[_]: FromJson, Q[_]: FromJson] = new FromJson[Coproduct[P, Q, ?]] {
-  val decoder = new (Coproduct[P, Q, ?] ~> DecodeJson) {
-    def apply[A](p: Coproduct[P, Q, A]): DecodeJson[A] = {
-      p.run.fold(
-        implicitly[FromJson[P]].decoder,
-        implicitly[FromJson[Q]].decoder
-      )
-    }
-  }
-}
-~~~
-
-# Coproducts
-
-~~~scala
-sealed trait MyPrim[A]
-case object MyInt extends MyPrim[Int]
-case object MyStr extends MyPrim[String]
-
-implicit object MyPrimToJson extends ToJson[MyPrim] {
-  val serializer = new (MyPrim ~> (? => Json)) {
-    def apply[A](p: MyPrim[A]) = p match {
-      case MyInt => jNumber(_)
-      case MyStr => jString(_)
-    }
-  }
-}
-~~~
-
-<div class="incremental">
-~~~scala
-sealed trait YourPrim[A]
-case object YourInt extends YourPrim[Int]
-case object YourDouble extends YourPrim[Double]
-
-implicit object YourPrimToJson extends ToJson[YourPrim] {
-  val serializer = new (YourPrim ~> (? => Json)) {
-    def apply[A](p: YourPrim[A]) = p match {
-      case YourInt => (i: Int) => jString(s"i${i}")
-      case YourDouble => (d: Double) => jString(s"d${d}")
-    }
-  }
-}
-~~~
-</div>
-
-# Coproducts
-
-~~~scala
-type Both[A] = Coproduct[MyPrim, YourPrim, A]
-def int: Both[Int] = rightc(YourInt)
-def double: Both[Double] = rightc(YourDouble)
-def str: Both[String] = leftc(MyStr)
-
-implicitly[ToJson[Both]]
-~~~
-
-# Either and Coproduct
-
-~~~scala
-Either[A, B]
-~~~
-
-Allows you to take two sum types and create a new
-sum type whose inhabitants are the union of the inhabitants of `A`
-and the inhabitants of `B`.
-
-<div class="incremental"><div>
-~~~scala
-Coproduct[F[_], G[_]]
-~~~
-Allows you to take two **descriptions** of (sets of) types and create a new
-**description** which can describe values using either of the nested
-descriptions.  
-</div></div>
-
-# Problem 2: Annotations
-
-* Nodes of the JSchema tree don't currently contain enough
-  information to generate interesting json-schema.
-    * titles
-    * min/max length of arrays
-    * property order
-    * formatting metadata
-    * etc.
-* We might want different kinds of metadata for different
-  applications.
-
-# Problem 2: Annotations
-
-~~~scala
-sealed trait JSchema[P[_], I]
-
-case class JPrimT[P[_], I](prim: P[I]) extends JSchema[P, I]
-
-case class JVecT[P[_], I](elemType: JSchema[P, I]) extends JSchema[P, Vector[I]]
-
-case class JSumT[P[_], I](alternatives: List[Alt[P, I, J] forSome { type J }]) extends JSchema[P, I]
-
-case class JObjT[P[_], I](props: FreeAp[PropSchema[P, I, ?], I]) extends JSchema[P, I]
-~~~
-
-# Problem 2: Annotations
-
-~~~scala
-sealed trait JSchema[P[_], A, I]
-
-case class JPrimT[P[_], A, I](ann: A, prim: P[I]) extends JSchema[P, A, I]
-
-case class JVecT[P[_], A, I](ann: A, elemType: JSchema[P, A, I]) extends JSchema[A, P, Vector[I]]
-
-case class JSumT[P[_], A, I](ann: A, alternatives: List[Alt[P, A, I, J] forSome { type J }]) extends JSchema[P, A, I]
-
-case class JObjT[A, P[_], I](ann: A, props: FreeAp[PropSchema[P, A, I, ?], I]) extends JSchema[P, A, I]
-~~~
-
-This is a bit messy and involves a bunch of redundancy. It will work; it just doesn't seem ideal.
-
-# Directly recusive data
-
-~~~scala
-class Prof(
-  name: String,
-  students: List[Prof]
-)
-~~~
-
-# No longer directly recusive data
-
-~~~scala
-class ProfF[S](
-  name: String,
-  students: List[S]
-)
-~~~
-
-# Reintroducing recursion with Fix
-
-~~~scala
-class ProfF[S](
-  name: String,
-  students: List[S]
-)
-~~~
-
-~~~scala
-case class Fix[F[_]](f: F[Fix[F]])
-
-type Prof = Fix[ProfF]
-~~~
-
-# Annotating a tree with Cofree
-
-~~~scala
-class ProfF[S](
-  name: String,
-  students: List[S]
-)
-~~~
-
-~~~scala
-case class Fix[F[_]](f: F[Fix[F]])
-
-type Prof = Fix[ProfF]
-~~~
-
-~~~scala
-case class Cofree[F[_], A](f: F[Cofree[F, A]], a: A)
-
-type IdProf = Cofree[ProfF, Int]
-~~~
-
-Hat tip to Rob Norris, go watch his talk [here](https://www.youtube.com/watch?v=7xSfLPD6tiQ)
-
-# Annotating a tree with Cofree
-
-~~~scala
-sealed trait Schema[P[_], I]
-
-case class VecT[P[_], I](elemType: Schema[P, I]) extends Schema[P, Vector[I]]
-~~~
-
-<div class="incremental">
-~~~scala
-sealed trait SchemaF[P[_], S, I]
-
-case class VecTF[P[_], S,  I](elemType: S) extends SchemaF[P, S, Vector[I]]
-~~~
-
-~~~scala
-type Schema[P[_], I] = Fix[SchemaF[P, ?, I]]
-~~~
-
-Does this work?
-</div>
-
-<div class="notes">
-This obviously won't work - we've lost the witness for the element type
-of our vector. 
-</div>
-
-# Annotating a tree with ~~Cofree~~ HCofree
-
-~~~scala
-sealed trait SchemaF[P[_], F[_], I]
-
-case class VecTF[P[_], F[_], I](elemType: F[I]) extends SchemaF[P, F, Vector[I]]
-~~~
-
-<div class="incremental">
-~~~scala
-case class HFix[F[_[_], _], I](unfix: F[HFix[F, ?], I])
+~~~haskell
+type Task n = Fix (TaskF n)
 ~~~
 </div>
 
 <div class="incremental">
-~~~scala
-type Schema[P[_]] = HFix[SchemaF[P, ?[_], ?]]
+~~~haskell
+findTask :: (Ord a) 
+         => TaskStore n a 
+         -> a 
+         -> Either (NonEmpty a) (Task n)
 ~~~
 </div>
 
-<div class="incremental"><div>
-To add annotations, use HCofree instead of HFix
+# Fixing taskCost
 
-~~~scala
-case class HCofree[A, F[_[_], _], I](a: A, f: F[HCofree[A, F, ?], I])
-~~~
-</div></div> 
+~~~haskell
+type Task n = Fix (TaskF n)
 
-<div class="incremental">
-~~~scala
-type AnnSchema[P[_], A] = HCofree[A, SchemaF[P, ?[_], ?]]
-~~~
-</div>
-
-# Rewriting our interpreters
-
-~~~scala
-type Schema[P[_]] = HFix[SchemaF[P, ?[_], ?]]
-~~~
-
-~~~scala
-implicit def schemaToJson[P[_]: ToJson] = new ToJson[Schema[P, ?]] {
-  val serializer = new (Schema[P, ?] ~> (? => Json)) = {
-    def apply[I](schema: Schema[P, I]): I => Json = {
-      schema.unfix match {
-        case SumT(alts) => 
-          (value: I) => alts.flatMap({ 
-            case Alt(id, base, prism) => 
-              prism.getOption(value).map(serializer(base)).toList map { 
-                jObject(JsonObject.single(id, _))
-              }
-          }).head
-
-        // ...
-      }
-    }
-  }
-}
-~~~
-
-# HFix and HCofree
-
-~~~scala
-case class HFix[F[_[_], _], I](unfix: F[HFix[F, ?], I])
-
-case class HCofree[A, F[_[_], _], I](a: A, f: F[HCofree[A, F, ?], I])
+findTaskF :: (Ord a) 
+          => TaskStore n a 
+          -> a 
+          -> Maybe (TaskF n a)
 ~~~
 
 <div class="incremental">
-~~~scala
-def forget[A, F[_[_], _], I](c: HCofree[A, F, I]): HFix[F, I]
+~~~haskell
+
+
+
+findTask :: (Ord a) 
+         => TaskStore n a 
+         -> a 
+         -> Either (NonEmpty a) (Task n)
+findTask store ref = 
+  
+  
+  
 ~~~
 </div>
 
-# HFix and HCofree
+# Fixing taskCost
 
-~~~scala
-case class HFix[F[_[_], _], I](unfix: F[HFix[F, ?], I])
+~~~haskell
+type Task n = Fix (TaskF n)
 
-case class HCofree[A, F[_[_], _], I](a: A, f: F[HCofree[A, F, ?], I])
+findTaskF :: (Ord a) 
+          => TaskStore n a 
+          -> a 
+          -> Maybe (TaskF n a)
 ~~~
 
-~~~scala
-def forget[A, F[_[_], _]]: (HCofree[A, F, ?] ~> HFix[F, ?])
+~~~haskell
+import Data.Semigroup (:|)
+
+
+findTask :: (Ord a) 
+         => TaskStore n a 
+         -> a 
+         -> Either (NonEmpty a) (Task n)
+findTask s ref = do
+  root  <- maybe (Left $ ref :| []) Right (findTaskF store ref)
+  
+  
 ~~~
 
-# HFix and HCofree
+# Fixing taskCost
 
-~~~scala
-case class HFix[F[_[_], _], I](unfix: F[HFix[F, ?], I])
+~~~haskell
+type Task n = Fix (TaskF n)
 
-case class HCofree[A, F[_[_], _], I](a: A, f: F[HCofree[A, F, ?], I])
+findTaskF :: (Ord a) 
+          => TaskStore n a 
+          -> a 
+          -> Maybe (TaskF n a)
 ~~~
 
-~~~scala
-def forget[A, F[_[_], _]]: (HCofree[A, F, ?] ~> HFix[F, ?]) = 
-  new (HCofree[A, F, ?] ~> HFix[F, ?]) {
-    def apply[I](c: HCofree[A, F, I]): HFix[F, I] = {
-      c.f // this only discards one layer of annotation!
-    }
-  }
+~~~haskell
+import Data.Semigroup (:|)
+import Data.Validation as V
+
+findTask :: (Ord a) 
+         => TaskStore n a 
+         -> a 
+         -> Either (NonEmpty a) (Task n)
+findTask s ref = do
+  root  <- maybe (Left $ ref :| []) Right (findTaskF s ref)
+  root' <- V.toEither $ traverse (V.fromEither . findTask s) root
+  
 ~~~
 
-# HFix and HCofree
+# Fixing taskCost
 
-~~~scala
-case class HFix[F[_[_], _], I](unfix: F[HFix[F, ?], I])
+~~~haskell
+type Task n = Fix (TaskF n)
 
-case class HCofree[A, F[_[_], _], I](a: A, f: F[HCofree[A, F, ?], I])
+findTaskF :: (Ord a) 
+          => TaskStore n a 
+          -> a 
+          -> Maybe (TaskF n a)
 ~~~
 
-~~~scala
-def forget[A, F[_[_], _]: HFunctor]: (HCofree[A, F, ?] ~> HFix[F, ?]) = 
-  new (HCofree[A, F, ?] ~> HFix[F, ?]) { self => 
-    def apply[I](c: HCofree[A, F, I]): HFix[F, I] = {
-      HFix(implicitly[HFunctor[F]].hfmap(self)(c.f))
-    }
-  }
-}
+~~~haskell
+import Data.Semigroup (:|)
+import Data.Validation as V
+
+findTask :: (Ord a) 
+         => TaskStore n a 
+         -> a 
+         -> Either (NonEmpty a) (Task n)
+findTask s ref = do
+  root  <- maybe (Left $ ref :| []) Right (findTaskF s ref)
+  root' <- V.toEither $ traverse (V.fromEither . findTask s) root
+  pure $ embed root
 ~~~
 
-<div class="incremental">
-~~~scala
-trait HFunctor[F[_[_], _]] {
-  def hfmap[M[_], N[_]](nt: M ~> N): F[M, ?] ~> F[N, ?]
-}
-~~~
-</div>
+# Fixing taskCost
 
-# HFix and HCofree
+~~~haskell
+type Task n = Fix (TaskF n)
 
-~~~scala
-case class HFix[F[_[_], _], I](unfix: F[HFix[F, ?], I])
-
-case class HCofree[A, F[_[_], _], I](a: A, f: F[HCofree[A, F, ?], I])
+findTaskF :: (Ord a) 
+          => TaskStore n a 
+          -> a 
+          -> Maybe (TaskF n a)
 ~~~
 
-<div class="incremental">
-~~~scala
-final case class HEnvT[A, F[_[_], _], G[_], I](a: A, fg: F[G, I])
-~~~
-</div>
-
-# HFix and HCofree
-
-~~~scala
-case class HFix[F[_[_], _], I](unfix: F[HFix[F, ?], I])
-
-//case class HCofree[A, F[_[_], _], I](a: A, f: F[HCofree[A, F, ?], I])
+~~~haskell
+taskCost :: (Semigroup n) => Task n -> n
+taskCost = cata (\t -> sconcat (estimate t :| dependsOn t))
 ~~~
 
-~~~scala
-final case class HEnvT[A, F[_[_], _], G[_], I](a: A, fg: F[G, I])
-~~~
-
-~~~scala
-type HCofree[A, F[_[_], _], I] = HFix[HEnvT[A, F, ?[_], ?], I]
-~~~
-
-# Working with fixpoint trees
-
-~~~scala
-type HAlgebra[F[_[_], _], G[_]] = F[G, ?] ~> G
-~~~
-
-~~~scala
-def cata[F[_[_], _]: HFunctor, G[_]](alg: HAlgebra[F, G]): (HFix[F, ?] ~> G) = 
-  new (HFix[F, ?] ~> G) { self => 
-    def apply[I](f: HFix[F, I]): G[I] = {
-      alg.apply[I](f.unfix.hfmap[G](self))
-    }
-  }
-~~~
-
-<div class="incremental">
-~~~scala
-//final case class HEnvT[A, F[_[_], _], G[_], I](a: A, fg: F[G, I])
-//type HCofree[A, F[_[_], _], I] = HFix[HEnvT[A, F, ?[_], ?], I]
-
-def forgetAlg[A, F[_[_], _]] = new HAlgebra[HEnvT[A, F, ?[_], ?], HFix[F, ?]] {
-  def apply[I](env: HEnvT[A, F, HFix[F, ?], I]) = HFix(env.fg)
-}
-~~~
-</div>
-
-<div class="incremental">
-~~~scala
-def forget[F[_[_], _]: HFunctor, A]: (HCofree[A, F, ?] ~> HFix[F, ?]) = cata(forgetAlg)
-~~~
-</div>
-
-# Drawbacks
-
-The Scala compiler hates me.
-
-~~~
-[error] /Users/nuttycom/personal/scala_world-2017/sample_code/xenomorph/src/main/scala/xenomorph/Schema.scala:263: type mismatch;
-[error]  found   : [γ$13$]xenomorph.PropSchema[O,[γ$40$]xenomorph
-.HCofree[[β$0$[_$1], γ$1$]xenomorph
-.SchemaF[P,β$0$,γ$1$],A,γ$40$],γ$13$] ~> [γ$14$]xenomorph.PropSchema[N,[γ$40$]xenomorph
-.HCofree[[β$0$[_$1], γ$1$]xenomorph.SchemaF[P,β$0$,γ$1$],A,γ$40$],γ$14$]
-[error]     (which expands to)  scalaz.NaturalTransformation[[γ$13$]xenomorph
-.PropSchema[O,[γ$40$]xenomorph.HCofree[[β$0$[_$1], γ$1$]xenomorph
-.SchemaF[P,β$0$,γ$1$],A,γ$40$],γ$13$],[γ$14$]xenomorph.PropSchema[N,[γ$40$]xenomorph
-.HCofree[[β$0$[_$1], γ$1$]xenomorph.SchemaF[P,β$0$,γ$1$],A,γ$40$],γ$14$]]
-[error]  required: [γ$3$]xenomorph.PropSchema[O,[γ$2$]xenomorph
-.HCofree[[β$0$[_$1], γ$1$]xenomorph
-.SchemaF[P,β$0$,γ$1$],A,γ$2$],γ$3$] ~> G
-[error]     (which expands to)  scalaz.NaturalTransformation[[γ$3$]xenomorph
-.PropSchema[O,[γ$2$]xenomorph.HCofree[[β$0$[_$1], γ$1$]xenomorph
-.SchemaF[P,β$0$,γ$1$],A,γ$2$],γ$3$],G]
-[error]       PropSchema.contraNT[O, N, Schema[A, P, ?]](f)
-~~~
-
-That's the result of leaving off a type ascription, there's actually nothing incorrect about the code.
-
-# Conclusion
-
-When we're working at kind `*`, we're dealing with data.
-
-When we're working at kind `* -> *` we're dealing with **descriptions** of data.
-
-<div class="incremental">
-~~~scala
-A => B
-
-F[_] ~> G[_]
-~~~
-</div>
-
-<div class="incremental">
-~~~scala
-Either[A, B]
-
-Coproduct[F[_], G[_]]
-~~~
-</div>
-
-<div class="incremental">
-~~~scala
-trait Functor[F[_]] {
-  def fmap[A, B](f: A => B): F[A] => F[B]
-}
-
-trait HFunctor[F[_[_], _]] {
-  def hfmap[M[_], N[_]](nt: M ~> N): F[M, ?] ~> F[N, ?]
-}
-~~~
-</div>

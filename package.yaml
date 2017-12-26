@@ -1,0 +1,19 @@
+name:                Task
+version:             0.1.0.0
+license:             BSD3
+author:              "Kris Nuttycombe"
+maintainer:          "kris.nuttycombe@gmail.com"
+copyright:           "2017 Kris Nuttycombe"
+
+dependencies:
+  - base >= 4.7 && < 5
+  - comonad
+  - containers
+  - lens
+  - mtl
+  - recursion-schemes
+  - text
+  - validation
+
+library:
+  source-dirs: src

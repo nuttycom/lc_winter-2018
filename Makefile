@@ -21,7 +21,7 @@ reveal: $(SOURCE) $(STYLE)
 %.svg : %.dot
 	$(DOT) -Tsvg $< -o $@
 
-graphs: dags/tasks1.svg dags/tasks2.svg dags/tasks3.svg dags/tasks4.svg
+graphs: $(patsubst %.dot,%.svg,$(wildcard dags/*.dot))
 
 slidy: slides.md graphs
 	$(PANDOC) -t slidy --standalone --section-divs --highlight-style pygments slides.md -o slides.slidy.html

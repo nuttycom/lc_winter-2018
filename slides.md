@@ -11,6 +11,7 @@
 > - Write down a failing test case for a specific feature. This test will be incomplete and wrong.
 > - Write code until that test passes (solving the wrong problem).
 > - Iterate
+> - You tend to work bottom-up. But at the beginning of a project, you don't know what those leaves of the problem look like
 
 # Type-Driven Development
 
@@ -18,6 +19,7 @@
 > - Look at your type. 
 > - Does it represent all the states you need?  Write a proof that it does!
 > - Does it imply some states you don't want in your program? Introduce some new types to narrow things down (recurse!)
+> - You tend to work more top-down, starting from the things that you understand, and then refining your solution.
 
 # Chicken Sexing
 
@@ -219,7 +221,7 @@ than a real value. So, let's prune off that extra bit of state space.
 
 <div class="incremental">
 ~~~haskell
-taskCost :: Task -> n
+taskCost :: (Monoid n) => Task -> n
 taskCost = const mempty
 ~~~
 </div>
@@ -503,7 +505,7 @@ data TaskF n a = TaskF
 <div class="incremental">
 ~~~haskell
 -- from Data.Functor.Foldable 
-newtype Fix f = Fix { unfix :: f (Fix f) }
+newtype Fix (f :: * -> *) = Fix { unfix :: f (Fix f) }
 ~~~
 </div>
 
@@ -640,3 +642,38 @@ taskCost :: (Semigroup n) => Task n -> n
 taskCost = cata (\t -> sconcat (estimate t :| dependsOn t))
 ~~~
 
+# Graphing!
+
+<img src="./dags/tasks5.svg"/>
+
+# Graphing!
+
+~~~haskell
+graph :: (Ord a, Show a) => TaskStore n a -> a -> DotGraph a
+graph s a = 
+  let nodes = a : transitiveDeps s a
+      edges' (a, tf) = (a,,()) <$> dependsOn tf
+      edges = edges' =<< (\a' -> fmap (a',) . F.toList $ findTaskF s a') =<< nodes
+  in  graphElemsToDot (graphParams s) ((,()) <$> nodes) (L.nub edges)
+
+graphParams :: (Ord a) => TaskStore n a -> GraphvizParams a al el () al
+graphParams s = nonClusteredParams 
+  { isDirected = True
+  , globalAttributes = 
+      [ GraphAttrs [RankDir FromLeft] 
+      , NodeAttrs  [shape DoubleCircle]
+      ]
+  , fmtNode = \(a, _) -> 
+      let attrs t = toLabel (title t) : taskStyle (taskState t) 
+      in  maybe [] attrs $ findTaskF s a 
+  }
+
+taskStyle :: TaskState -> [Attribute]
+taskStyle (Created Task) = []
+taskStyle (Created Bug) = [style filled, fillColor Tomato] 
+taskStyle Completed = [style filled, fillColor LawnGreen]
+~~~
+
+# To Be Embellished
+
+<img src="./dags/tasks6.svg"/>

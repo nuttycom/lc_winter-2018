@@ -1,0 +1,27 @@
+digraph G {
+  rankdir="LR";
+  node [shape=doublecircle]
+  tt  [label="Build a\ntask tracker"]
+  ct  [label="Create a\ntask type"; style="filled"; fillcolor="lawngreen"]
+  ptg [label="Print a\ntask graph"; style="filled"; fillcolor="lawngreen"]
+  ptc [label="Print\ntask costs"]
+  qt  [label="Query\ntasks"; style="filled"; fillcolor="lawngreen"]
+  bts [label="Build task\nstorage"; style="filled"; fillcolor="lawngreen"]
+  ctc [label="Compute the\ncost of a task"; style="filled"; fillcolor="lawngreen"]
+  ttd [label="Traverse task\ndependencies"; style="filled"; fillcolor="lawngreen"]
+  ftc [label="Fix broken\ntask costs"; style=filled; fillcolor="lawngreen"]
+
+  tt  -> ptg
+  ptg -> qt
+  qt  -> bts
+  tt  -> ptc
+  ptc -> qt
+  ptc -> ctc
+  ctc -> ct
+  bts -> ct
+  ptg -> ttd
+  ttd -> ct
+  ctc -> ttd
+  ptc -> ftc
+}
+

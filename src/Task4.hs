@@ -9,6 +9,7 @@ module Task4 where
 
 import Control.Lens
 import Control.Monad.State
+import Data.Foldable as F
 import Data.Functor.Foldable
 import Data.List as L
 import Data.List.NonEmpty
@@ -23,8 +24,13 @@ import Data.GraphViz.Attributes.Complete
 import Data.GraphViz.Commands
 import Debug.Trace
 
+data TaskType
+  = Task
+  | Bug
+  deriving (Eq, Ord)
+
 data TaskState 
-  = Created
+  = Created TaskType
   | Completed
   deriving (Eq, Ord)
 
@@ -52,6 +58,12 @@ findTask s ref = do
   root <- maybe (Left $ ref :| []) Right (findTaskF s ref)
   embed <$> (toEither $ traverse (fromEither . findTask s) root)
 
+transitiveDeps :: (Ord a) => TaskStore n a -> a -> [a]
+transitiveDeps s a = do
+  task <- F.toList $ findTaskF s a
+  dep  <- dependsOn task
+  dep : transitiveDeps s dep
+
 treeSum :: (Semigroup n) => Task n -> n
 treeSum = cata (\t -> sconcat (estimate t :| dependsOn t))
 
@@ -66,14 +78,14 @@ spanningTree l a =
         pruned <- traverse go retained
         pure (set l pruned a')
 
-graph :: (Ord a, Show a) => TaskStore n a -> DotGraph a
-graph s = 
-  let nodes = (, ()) <$> M.keys (unTaskStore s)
+graph :: (Ord a, Show a) => TaskStore n a -> a -> DotGraph a
+graph s a = 
+  let nodes = a : transitiveDeps s a
       edges' (a, tf) = (a,,()) <$> dependsOn tf
-      edges = edges' =<< M.toList (unTaskStore s)
-  in  graphElemsToDot (graphParams s) (traceShowId nodes) edges
+      edges = edges' =<< (\a' -> fmap (a',) . F.toList $ findTaskF s a') =<< nodes
+  in  graphElemsToDot (graphParams s) ((,()) <$> nodes) (L.nub edges)
 
-graphParams :: (Ord a) => TaskStore n a -> GraphvizParams a () () () ()
+graphParams :: (Ord a) => TaskStore n a -> GraphvizParams a al el () al
 graphParams s = nonClusteredParams 
   { isDirected = True
   , globalAttributes = 
@@ -86,23 +98,26 @@ graphParams s = nonClusteredParams
   }
 
 taskStyle :: TaskState -> [Attribute]
-taskStyle Created = []
+taskStyle (Created Task) = []
+taskStyle (Created Bug) = [style filled, fillColor Tomato]
 taskStyle Completed = [style filled, fillColor LawnGreen]
 
 sampleTasks :: TaskStore Int Int
 sampleTasks = 
-  let ctd i n d = (i, TaskF n "" d Created S.empty 1)
+  let ctd i n d = (i, TaskF n "" d (Created Task) S.empty 1)
+      cbd i n d = (i, TaskF n "" d (Created Bug) S.empty 1)
       cpd i n d = (i, TaskF n "" d Completed S.empty 1)
   in  TaskStore $ M.fromList 
     [ ctd 0 "Build a\ntask tracker" [1, 2] 
     , ctd 1 "Print a\ntask graph" [3, 7] 
-    , ctd 2 "Print\ntask costs" [3, 5, 7]
+    , ctd 2 "Print\ntask costs" [3, 5, 7, 8]
     , ctd 3 "Query\ntasks" [4]
     , ctd 4 "Build task\nstorage" [6]
     , cpd 5 "Compute the\ncost of a task" [6]
     , cpd 6 "Create a\ntask type" [] 
     , ctd 7 "Traverse task\ndependencies" [6] 
+    , cbd 8 "Fix broken\ntask costs" [] 
     ]
 
-renderSampleTasks :: IO ()
-renderSampleTasks = runGraphviz (graph sampleTasks) Svg "test.svg"
+renderSampleTasks :: IO FilePath
+renderSampleTasks = runGraphviz (graph sampleTasks 0) Svg "test.svg"

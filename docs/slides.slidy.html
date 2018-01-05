@@ -1,0 +1,592 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+ "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <meta name="author" content="Kris Nuttycombe (@nuttycom) - January, 2018" />
+  <title>Type-Driven Development</title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <style type="text/css">
+div.sourceCode { overflow-x: auto; }
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+td.sourceCode { padding-left: 5px; }
+code > span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code > span.dt { color: #902000; } /* DataType */
+code > span.dv { color: #40a070; } /* DecVal */
+code > span.bn { color: #40a070; } /* BaseN */
+code > span.fl { color: #40a070; } /* Float */
+code > span.ch { color: #4070a0; } /* Char */
+code > span.st { color: #4070a0; } /* String */
+code > span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code > span.ot { color: #007020; } /* Other */
+code > span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code > span.fu { color: #06287e; } /* Function */
+code > span.er { color: #ff0000; font-weight: bold; } /* Error */
+code > span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+code > span.cn { color: #880000; } /* Constant */
+code > span.sc { color: #4070a0; } /* SpecialChar */
+code > span.vs { color: #4070a0; } /* VerbatimString */
+code > span.ss { color: #bb6688; } /* SpecialString */
+code > span.im { } /* Import */
+code > span.va { color: #19177c; } /* Variable */
+code > span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code > span.op { color: #666666; } /* Operator */
+code > span.bu { } /* BuiltIn */
+code > span.ex { } /* Extension */
+code > span.pp { color: #bc7a00; } /* Preprocessor */
+code > span.at { color: #7d9029; } /* Attribute */
+code > span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code > span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code > span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+  </style>
+  <link rel="stylesheet" type="text/css" media="screen, projection, print"
+    href="http://www.w3.org/Talks/Tools/Slidy2/styles/slidy.css" />
+  <script src="http://www.w3.org/Talks/Tools/Slidy2/scripts/slidy.js"
+    charset="utf-8" type="text/javascript"></script>
+</head>
+<body>
+<div class="slide titlepage">
+  <h1 class="title">Type-Driven Development</h1>
+  <p class="author">
+Kris Nuttycombe (<span class="citation">@nuttycom</span>) - January, 2018
+  </p>
+</div>
+<div id="resources" class="slide section level1">
+<h1>Resources</h1>
+<ul>
+<li>Slides: <a href="http://nuttycom.github.io/lc_winter-2018-tdd">nuttycom.github.io/lc_winter-2018-tdd</a></li>
+<li>Sources: <a href="https://github.com/nuttycom/lc_winter-2018-tdd">github.com/nuttycom/lc_winter-2018-tdd</a></li>
+</ul>
+</div>
+<div id="test-driven-development" class="slide section level1">
+<h1>Test-Driven Development</h1>
+<ul class="incremental">
+<li>Write down a failing test case for a specific feature. This test will be incomplete and wrong.</li>
+<li>Write code until that test passes (solving the wrong problem).</li>
+<li>Iterate</li>
+<li>You tend to work bottom-up. But at the beginning of a project, you don't know what those leaves of the problem look like!</li>
+</ul>
+</div>
+<div id="type-driven-development" class="slide section level1">
+<h1>Type-Driven Development</h1>
+<ul class="incremental">
+<li>Write down the problem as some types - both data and operations. Avoid implementation concerns.</li>
+<li>Look at your type.</li>
+<li>Does it represent all the states you need? Write a proof that it does!</li>
+<li>Does it imply some states you don't want in your program? Introduce some new types to narrow things down (recurse!)</li>
+<li>You tend to work more top-down, starting from the things that you understand, and then refining the parts of your system.</li>
+</ul>
+</div>
+<div id="chicken-sexing" class="slide section level1">
+<h1>Chicken Sexing</h1>
+<div align="center">
+<p><img width="600" src="images/chicken_sexing.jpg"/></p>
+<blockquote>
+<p>-- <a href="https://twitter.com/garybernhardt/status/947260894609686529">anecdote via @garybernhardt</a></p>
+</blockquote>
+</div>
+
+</div>
+<div id="dags-for-task-management" class="slide section level1">
+<h1>DAGs for Task Management</h1>
+<p><img src="./dags/tasks0.svg"/></p>
+
+</div>
+<div id="a-simple-task-type" class="slide section level1">
+<h1>A simple task type</h1>
+<p><img src="./dags/tasks1.svg"/></p>
+</div>
+<div id="a-simple-task-type-1" class="slide section level1">
+<h1>A simple task type</h1>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Task</span> <span class="fu">=</span> <span class="dt">Task</span> 
+  {<span class="ot"> title ::</span> <span class="dt">Text</span>
+  ,<span class="ot"> description ::</span> <span class="dt">Text</span>
+  ,<span class="ot"> dependsOn ::</span> [<span class="dt">Task</span>]
+  ,<span class="ot"> state ::</span> <span class="dt">TaskState</span>
+  ,<span class="ot"> tags ::</span> <span class="dt">Set</span> <span class="dt">TaskTag</span>
+  ,<span class="ot"> estimate ::</span> <span class="dt">Int</span>
+  }</code></pre></div>
+
+</div>
+<div id="task-cost" class="slide section level1">
+<h1>Task Cost</h1>
+<p><img src="./dags/tasks2.svg"/></p>
+</div>
+<div id="task-cost-1" class="slide section level1">
+<h1>Task Cost</h1>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Task</span> <span class="fu">=</span> <span class="dt">Task</span> 
+  {<span class="ot"> title ::</span> <span class="dt">Text</span>
+  ,<span class="ot"> description ::</span> <span class="dt">Text</span>
+  ,<span class="ot"> dependsOn ::</span> [<span class="dt">Task</span>]
+  ,<span class="ot"> state ::</span> <span class="dt">TaskState</span>
+  ,<span class="ot"> tags ::</span> <span class="dt">Set</span> <span class="dt">TaskTag</span>
+  ,<span class="ot"> estimate ::</span> <span class="dt">Int</span>
+  }</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">taskCost ::</span> <span class="dt">Task</span> <span class="ot">-&gt;</span> <span class="dt">Int</span></code></pre></div>
+
+</div>
+<div id="task-cost-2" class="slide section level1">
+<h1>Task Cost</h1>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Task</span> <span class="fu">=</span> <span class="dt">Task</span> 
+  {<span class="ot"> title ::</span> <span class="dt">Text</span>
+  ,<span class="ot"> description ::</span> <span class="dt">Text</span>
+  ,<span class="ot"> dependsOn ::</span> [<span class="dt">Task</span>]
+  ,<span class="ot"> state ::</span> <span class="dt">TaskState</span>
+  ,<span class="ot"> tags ::</span> <span class="dt">Set</span> <span class="dt">TaskTag</span>
+  ,<span class="ot"> estimate ::</span> <span class="dt">Int</span>
+  }</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">taskCost ::</span> <span class="dt">Task</span> <span class="ot">-&gt;</span> <span class="dt">Int</span>
+taskCost task <span class="fu">=</span> 
+  estimate task <span class="fu">+</span> sum (fmap taskCost (dependsOn task))</code></pre></div>
+
+<div class="incremental">
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">taskCost ::</span> <span class="dt">Task</span> <span class="ot">-&gt;</span> <span class="dt">Int</span>
+taskCost task <span class="fu">=</span> length <span class="fu">$</span> dependsOn task</code></pre></div>
+</div>
+</div>
+<div id="prune-the-space-of-possible-implementations" class="slide section level1">
+<h1>Prune the space of possible implementations</h1>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Task</span> n <span class="fu">=</span> <span class="dt">Task</span> 
+  {<span class="ot"> title ::</span> <span class="dt">Text</span>
+  ,<span class="ot"> description ::</span> <span class="dt">Text</span>
+  ,<span class="ot"> dependsOn ::</span> [<span class="dt">Task</span> n]
+  ,<span class="ot"> state ::</span> <span class="dt">TaskState</span>
+  ,<span class="ot"> tags ::</span> <span class="dt">Set</span> <span class="dt">TaskTag</span>
+  ,<span class="ot"> estimate ::</span> n
+  }</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">taskCost ::</span> (<span class="dt">Monoid</span> n) <span class="ot">=&gt;</span> <span class="dt">Task</span> n <span class="ot">-&gt;</span> n
+taskCost task <span class="fu">=</span> 
+  estimate task <span class="fu">&lt;&gt;</span> foldMap taskCost (dependsOn task)</code></pre></div>
+
+<div class="incremental">
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">taskCost ::</span> (<span class="dt">Monoid</span> n) <span class="ot">=&gt;</span> <span class="dt">Task</span> <span class="ot">-&gt;</span> n
+taskCost <span class="fu">=</span> const mempty</code></pre></div>
+</div>
+</div>
+<div id="get-rid-of-every-operation-you-dont-need" class="slide section level1">
+<h1>Get rid of every operation you don't need</h1>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Task</span> n <span class="fu">=</span> <span class="dt">Task</span> 
+  {<span class="ot"> title ::</span> <span class="dt">Text</span>
+  ,<span class="ot"> description ::</span> <span class="dt">Text</span>
+  ,<span class="ot"> dependsOn ::</span> [<span class="dt">Task</span> n]
+  ,<span class="ot"> state ::</span> <span class="dt">TaskState</span>
+  ,<span class="ot"> tags ::</span> <span class="dt">Set</span> <span class="dt">TaskTag</span>
+  ,<span class="ot"> estimate ::</span> n
+  }</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">taskCost ::</span> (<span class="dt">Semigroup</span> n) <span class="ot">=&gt;</span> <span class="dt">Task</span> n <span class="ot">-&gt;</span> n
+taskCost task <span class="fu">=</span> 
+  sconcat (estimate task <span class="fu">:|</span> fmap taskCost (dependsOn task))</code></pre></div>
+
+</div>
+<div id="storage" class="slide section level1">
+<h1>Storage</h1>
+<p><img src="./dags/tasks3.svg"/></p>
+</div>
+<div id="storage-1" class="slide section level1">
+<h1>Storage</h1>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Task</span> n <span class="fu">=</span> <span class="dt">Task</span> 
+  {<span class="ot"> title ::</span> <span class="dt">Text</span>
+  ,<span class="ot"> description ::</span> <span class="dt">Text</span>
+  ,<span class="ot"> dependsOn ::</span> [<span class="dt">Task</span> n]
+  ,<span class="ot"> state ::</span> <span class="dt">TaskState</span>
+  ,<span class="ot"> tags ::</span> <span class="dt">Set</span> <span class="dt">TaskTag</span>
+  ,<span class="ot"> estimate ::</span> n 
+  } </code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">newtype</span> <span class="dt">TaskStore</span> n <span class="fu">=</span> <span class="dt">TaskStore</span> {<span class="ot"> unTaskStore ::</span> <span class="dt">Map</span> <span class="dt">TaskRef</span> (<span class="dt">TaskF</span> n) }
+
+<span class="ot">findTask ::</span> <span class="dt">TaskStore</span> n 
+         <span class="ot">-&gt;</span> <span class="dt">TaskRef</span> 
+         <span class="ot">-&gt;</span> <span class="dt">Maybe</span> (<span class="dt">Task</span> n)
+  </code></pre></div>
+
+</div>
+<div id="storage-2" class="slide section level1">
+<h1>Storage</h1>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Task</span> n <span class="fu">=</span> <span class="dt">Task</span> 
+  {<span class="ot"> title ::</span> <span class="dt">Text</span>
+  ,<span class="ot"> description ::</span> <span class="dt">Text</span>
+  ,<span class="ot"> dependsOn ::</span> [<span class="dt">TaskRef</span>]
+  ,<span class="ot"> state ::</span> <span class="dt">TaskState</span>
+  ,<span class="ot"> tags ::</span> <span class="dt">Set</span> <span class="dt">TaskTag</span>
+  ,<span class="ot"> estimate ::</span> n 
+  } </code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">newtype</span> <span class="dt">TaskStore</span> n <span class="fu">=</span> <span class="dt">TaskStore</span> {<span class="ot"> unTaskStore ::</span> <span class="dt">Map</span> <span class="dt">TaskRef</span> (<span class="dt">TaskF</span> n) }
+
+<span class="ot">findTask ::</span> <span class="dt">TaskStore</span> n 
+         <span class="ot">-&gt;</span> <span class="dt">TaskRef</span> 
+         <span class="ot">-&gt;</span> <span class="dt">Maybe</span> (<span class="dt">Task</span> n)
+  </code></pre></div>
+
+</div>
+<div id="storage-3" class="slide section level1">
+<h1>Storage</h1>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">TaskF</span> n a <span class="fu">=</span> <span class="dt">TaskF</span> 
+  {<span class="ot"> title ::</span> <span class="dt">Text</span>
+  ,<span class="ot"> description ::</span> <span class="dt">Text</span>
+  ,<span class="ot"> dependsOn ::</span> [a]
+  ,<span class="ot"> state ::</span> <span class="dt">TaskState</span>
+  ,<span class="ot"> tags ::</span> <span class="dt">Set</span> <span class="dt">TaskTag</span>
+  ,<span class="ot"> estimate ::</span> n 
+  } </code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">newtype</span> <span class="dt">TaskStore</span> n a <span class="fu">=</span> <span class="dt">TaskStore</span> {<span class="ot"> unTaskStore ::</span> <span class="dt">Map</span> a (<span class="dt">TaskF</span> n a) }
+
+<span class="ot">findTaskF ::</span> (<span class="dt">Ord</span> a) 
+          <span class="ot">=&gt;</span> <span class="dt">TaskStore</span> n a 
+          <span class="ot">-&gt;</span> a 
+          <span class="ot">-&gt;</span> <span class="dt">Maybe</span> (<span class="dt">TaskF</span> n a)
+  </code></pre></div>
+
+</div>
+<div id="storage-4" class="slide section level1">
+<h1>Storage</h1>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">TaskF</span> n a <span class="fu">=</span> <span class="dt">TaskF</span> 
+  {<span class="ot"> title ::</span> <span class="dt">Text</span>
+  ,<span class="ot"> description ::</span> <span class="dt">Text</span>
+  ,<span class="ot"> dependsOn ::</span> [a]
+  ,<span class="ot"> state ::</span> <span class="dt">TaskState</span>
+  ,<span class="ot"> tags ::</span> <span class="dt">Set</span> <span class="dt">TaskTag</span>
+  ,<span class="ot"> estimate ::</span> n 
+  } </code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">newtype</span> <span class="dt">TaskStore</span> n a <span class="fu">=</span> <span class="dt">TaskStore</span> {<span class="ot"> unTaskStore ::</span> <span class="dt">Map</span> a (<span class="dt">TaskF</span> n a) }
+
+<span class="ot">findTaskF ::</span> (<span class="dt">Ord</span> a) 
+          <span class="ot">=&gt;</span> <span class="dt">TaskStore</span> n a 
+          <span class="ot">-&gt;</span> a 
+          <span class="ot">-&gt;</span> <span class="dt">Maybe</span> (<span class="dt">TaskF</span> n a)
+findTaskF <span class="fu">=</span> flip lookup <span class="fu">.</span> unTaskStore</code></pre></div>
+</div>
+<div id="oops." class="slide section level1">
+<h1>Oops.</h1>
+<pre><code>/Users/nuttycom/personal/lc_winter-2018-tdd/src/Task2.hs:29:44: error:
+    • Couldn&#39;t match type ‘a’ with ‘TaskF n a0’
+      ‘a’ is a rigid type variable bound by
+        the type signature for:
+          taskCost :: forall n a. Semigroup n =&gt; TaskF n a -&gt; n
+        at src/Task2.hs:27:1-43
+      Expected type: [TaskF n a0]
+        Actual type: [a]
+    • In the second argument of ‘fmap’, namely ‘(dependsOn task)’
+      In the second argument of ‘(:|)’, namely
+        ‘fmap taskCost (dependsOn task)’
+      In the first argument of ‘sconcat’, namely
+        ‘(estimate task :| fmap taskCost (dependsOn task))’
+    • Relevant bindings include
+        task :: TaskF n a (bound at src/Task2.hs:28:10)
+        taskCost :: TaskF n a -&gt; n (bound at src/Task2.hs:28:1)
+   |
+29 |   sconcat (estimate task :| fmap taskCost (dependsOn task))
+   |                                            ^^^^^^^^^^^^^^</code></pre>
+
+</div>
+<div id="oops.-1" class="slide section level1">
+<h1>Oops.</h1>
+<p><img src="./dags/tasks4.svg"/></p>
+</div>
+<div id="fixing-taskcost" class="slide section level1">
+<h1>Fixing taskCost</h1>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">taskCost ::</span> (<span class="dt">Semigroup</span> n) <span class="ot">=&gt;</span> <span class="dt">Task</span> n <span class="ot">-&gt;</span> n
+taskCost task <span class="fu">=</span> 
+  sconcat (estimate task <span class="fu">:|</span> fmap taskCost (dependsOn task))</code></pre></div>
+<div class="incremental">
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">findTaskF ::</span> (<span class="dt">Ord</span> a) 
+          <span class="ot">=&gt;</span> <span class="dt">TaskStore</span> n a 
+          <span class="ot">-&gt;</span> a 
+          <span class="ot">-&gt;</span> <span class="dt">Maybe</span> (<span class="dt">TaskF</span> n a)</code></pre></div>
+</div>
+<div class="incremental">
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">taskCost ::</span> (<span class="dt">Semigroup</span> n, <span class="dt">Ord</span> a) 
+         <span class="ot">=&gt;</span> <span class="dt">TaskStore</span> n a 
+         <span class="ot">-&gt;</span> <span class="dt">TaskF</span> n a 
+         <span class="ot">-&gt;</span> n</code></pre></div>
+</div>
+</div>
+<div id="fixing-taskcost-1" class="slide section level1">
+<h1>Fixing taskCost</h1>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">taskCost ::</span> (<span class="dt">Semigroup</span> n) <span class="ot">=&gt;</span> <span class="dt">Task</span> n <span class="ot">-&gt;</span> n
+taskCost task <span class="fu">=</span> 
+  sconcat (estimate task <span class="fu">:|</span> fmap taskCost (dependsOn task))</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">findTaskF ::</span> (<span class="dt">Ord</span> a) 
+          <span class="ot">=&gt;</span> <span class="dt">TaskStore</span> n a 
+          <span class="ot">-&gt;</span> a 
+          <span class="ot">-&gt;</span> <span class="dt">Maybe</span> (<span class="dt">TaskF</span> n a)</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">taskCost ::</span> (<span class="dt">Semigroup</span> n, <span class="dt">Ord</span> a) 
+         <span class="ot">=&gt;</span> <span class="dt">TaskStore</span> n a 
+         <span class="ot">-&gt;</span> <span class="dt">TaskF</span> n a 
+         <span class="ot">-&gt;</span> n
+taskCost s task <span class="fu">=</span> 
+  <span class="kw">let</span> deps <span class="fu">=</span> catMaybes <span class="fu">.</span> fmap (findTaskF s) <span class="fu">$</span> dependsOn task
+  <span class="kw">in</span>  sconcat (estimate task <span class="fu">:|</span> fmap (taskCost s) deps)</code></pre></div>
+
+</div>
+<div id="fixing-taskcost-2" class="slide section level1">
+<h1>Fixing taskCost</h1>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">TaskF</span> n a <span class="fu">=</span> <span class="dt">TaskF</span>
+  {<span class="ot"> title ::</span> <span class="dt">Text</span>
+  ,<span class="ot"> description ::</span> <span class="dt">Text</span>
+  ,<span class="ot"> dependsOn ::</span> [a]
+  ,<span class="ot"> state ::</span> <span class="dt">TaskState</span>
+  ,<span class="ot"> tags ::</span> <span class="dt">Set</span> <span class="dt">TaskTag</span>
+  ,<span class="ot"> estimate ::</span> n
+  } <span class="kw">deriving</span> <span class="dt">Functor</span></code></pre></div>
+<div class="incremental">
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="co">-- from Data.Functor.Foldable </span>
+<span class="kw">newtype</span> <span class="dt">Fix</span> (<span class="ot">f ::</span> <span class="fu">*</span> <span class="ot">-&gt;</span> <span class="fu">*</span>) <span class="fu">=</span> <span class="dt">Fix</span> {<span class="ot"> unfix ::</span> f (<span class="dt">Fix</span> f) }</code></pre></div>
+</div>
+<div class="incremental">
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Task</span> n <span class="fu">=</span> <span class="dt">Fix</span> (<span class="dt">TaskF</span> n)</code></pre></div>
+</div>
+<div class="incremental">
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">findTask ::</span> (<span class="dt">Ord</span> a) 
+         <span class="ot">=&gt;</span> <span class="dt">TaskStore</span> n a 
+         <span class="ot">-&gt;</span> a 
+         <span class="ot">-&gt;</span> <span class="dt">Either</span> (<span class="dt">NonEmpty</span> a) (<span class="dt">Task</span> n)</code></pre></div>
+</div>
+</div>
+<div id="fixing-taskcost-3" class="slide section level1">
+<h1>Fixing taskCost</h1>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Task</span> n <span class="fu">=</span> <span class="dt">Fix</span> (<span class="dt">TaskF</span> n)
+
+<span class="ot">findTaskF ::</span> (<span class="dt">Ord</span> a) 
+          <span class="ot">=&gt;</span> <span class="dt">TaskStore</span> n a 
+          <span class="ot">-&gt;</span> a 
+          <span class="ot">-&gt;</span> <span class="dt">Maybe</span> (<span class="dt">TaskF</span> n a)</code></pre></div>
+<div class="incremental">
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell">
+
+
+<span class="ot">findTask ::</span> (<span class="dt">Ord</span> a) 
+         <span class="ot">=&gt;</span> <span class="dt">TaskStore</span> n a 
+         <span class="ot">-&gt;</span> a 
+         <span class="ot">-&gt;</span> <span class="dt">Either</span> (<span class="dt">NonEmpty</span> a) (<span class="dt">Task</span> n)
+findTask store ref <span class="fu">=</span> 
+  
+  
+  </code></pre></div>
+</div>
+</div>
+<div id="fixing-taskcost-4" class="slide section level1">
+<h1>Fixing taskCost</h1>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Task</span> n <span class="fu">=</span> <span class="dt">Fix</span> (<span class="dt">TaskF</span> n)
+
+<span class="ot">findTaskF ::</span> (<span class="dt">Ord</span> a) 
+          <span class="ot">=&gt;</span> <span class="dt">TaskStore</span> n a 
+          <span class="ot">-&gt;</span> a 
+          <span class="ot">-&gt;</span> <span class="dt">Maybe</span> (<span class="dt">TaskF</span> n a)</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Data.Semigroup</span> (:|)
+
+
+<span class="ot">findTask ::</span> (<span class="dt">Ord</span> a) 
+         <span class="ot">=&gt;</span> <span class="dt">TaskStore</span> n a 
+         <span class="ot">-&gt;</span> a 
+         <span class="ot">-&gt;</span> <span class="dt">Either</span> (<span class="dt">NonEmpty</span> a) (<span class="dt">Task</span> n)
+findTask s ref <span class="fu">=</span> <span class="kw">do</span>
+  root  <span class="ot">&lt;-</span> maybe (<span class="dt">Left</span> <span class="fu">$</span> ref <span class="fu">:|</span> []) <span class="dt">Right</span> (findTaskF store ref)
+  
+  </code></pre></div>
+</div>
+<div id="fixing-taskcost-5" class="slide section level1">
+<h1>Fixing taskCost</h1>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Task</span> n <span class="fu">=</span> <span class="dt">Fix</span> (<span class="dt">TaskF</span> n)
+
+<span class="ot">findTaskF ::</span> (<span class="dt">Ord</span> a) 
+          <span class="ot">=&gt;</span> <span class="dt">TaskStore</span> n a 
+          <span class="ot">-&gt;</span> a 
+          <span class="ot">-&gt;</span> <span class="dt">Maybe</span> (<span class="dt">TaskF</span> n a)</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Data.Semigroup</span> (:|)
+<span class="kw">import </span><span class="dt">Data.Validation</span> <span class="kw">as</span> <span class="dt">V</span>
+
+<span class="ot">findTask ::</span> (<span class="dt">Ord</span> a) 
+         <span class="ot">=&gt;</span> <span class="dt">TaskStore</span> n a 
+         <span class="ot">-&gt;</span> a 
+         <span class="ot">-&gt;</span> <span class="dt">Either</span> (<span class="dt">NonEmpty</span> a) (<span class="dt">Task</span> n)
+findTask s ref <span class="fu">=</span> <span class="kw">do</span>
+  root  <span class="ot">&lt;-</span> maybe (<span class="dt">Left</span> <span class="fu">$</span> ref <span class="fu">:|</span> []) <span class="dt">Right</span> (findTaskF s ref)
+  root&#39; <span class="ot">&lt;-</span> V.toEither <span class="fu">$</span> traverse (V.fromEither <span class="fu">.</span> findTask s) root
+  </code></pre></div>
+</div>
+<div id="fixing-taskcost-6" class="slide section level1">
+<h1>Fixing taskCost</h1>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Task</span> n <span class="fu">=</span> <span class="dt">Fix</span> (<span class="dt">TaskF</span> n)
+
+<span class="ot">findTaskF ::</span> (<span class="dt">Ord</span> a) 
+          <span class="ot">=&gt;</span> <span class="dt">TaskStore</span> n a 
+          <span class="ot">-&gt;</span> a 
+          <span class="ot">-&gt;</span> <span class="dt">Maybe</span> (<span class="dt">TaskF</span> n a)</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Data.Semigroup</span> (:|)
+<span class="kw">import </span><span class="dt">Data.Validation</span> <span class="kw">as</span> <span class="dt">V</span>
+
+<span class="ot">findTask ::</span> (<span class="dt">Ord</span> a) 
+         <span class="ot">=&gt;</span> <span class="dt">TaskStore</span> n a 
+         <span class="ot">-&gt;</span> a 
+         <span class="ot">-&gt;</span> <span class="dt">Either</span> (<span class="dt">NonEmpty</span> a) (<span class="dt">Task</span> n)
+findTask s ref <span class="fu">=</span> <span class="kw">do</span>
+  root  <span class="ot">&lt;-</span> maybe (<span class="dt">Left</span> <span class="fu">$</span> ref <span class="fu">:|</span> []) <span class="dt">Right</span> (findTaskF s ref)
+  root&#39; <span class="ot">&lt;-</span> V.toEither <span class="fu">$</span> traverse (V.fromEither <span class="fu">.</span> findTask s) root
+  pure <span class="fu">$</span> embed root</code></pre></div>
+</div>
+<div id="fixing-taskcost-7" class="slide section level1">
+<h1>Fixing taskCost</h1>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Task</span> n <span class="fu">=</span> <span class="dt">Fix</span> (<span class="dt">TaskF</span> n)
+
+<span class="ot">findTaskF ::</span> (<span class="dt">Ord</span> a) 
+          <span class="ot">=&gt;</span> <span class="dt">TaskStore</span> n a 
+          <span class="ot">-&gt;</span> a 
+          <span class="ot">-&gt;</span> <span class="dt">Maybe</span> (<span class="dt">TaskF</span> n a)</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">taskCost ::</span> (<span class="dt">Semigroup</span> n) <span class="ot">=&gt;</span> <span class="dt">Task</span> n <span class="ot">-&gt;</span> n
+taskCost <span class="fu">=</span> cata (\t <span class="ot">-&gt;</span> sconcat (estimate t <span class="fu">:|</span> dependsOn t))</code></pre></div>
+</div>
+<div id="graphing" class="slide section level1">
+<h1>Graphing!</h1>
+<p><img src="./dags/tasks5.svg"/></p>
+</div>
+<div id="graphing-1" class="slide section level1">
+<h1>Graphing!</h1>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">graph ::</span> (<span class="dt">Ord</span> a, <span class="dt">Show</span> a) <span class="ot">=&gt;</span> <span class="dt">TaskStore</span> n a <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">DotGraph</span> a
+graph s a <span class="fu">=</span> 
+  <span class="kw">let</span> nodes <span class="fu">=</span> a <span class="fu">:</span> transitiveDeps s a
+      edges&#39; (a, tf) <span class="fu">=</span> (a,,()) <span class="fu">&lt;$&gt;</span> dependsOn tf
+      edges <span class="fu">=</span> edges&#39; <span class="fu">=&lt;&lt;</span> (\a&#39; <span class="ot">-&gt;</span> fmap (a&#39;,) <span class="fu">.</span> F.toList <span class="fu">$</span> findTaskF s a&#39;) <span class="fu">=&lt;&lt;</span> nodes
+  <span class="kw">in</span>  graphElemsToDot (graphParams s) ((,()) <span class="fu">&lt;$&gt;</span> nodes) (L.nub edges)
+
+<span class="ot">graphParams ::</span> (<span class="dt">Ord</span> a) <span class="ot">=&gt;</span> <span class="dt">TaskStore</span> n a <span class="ot">-&gt;</span> <span class="dt">GraphvizParams</span> a al el () al
+graphParams s <span class="fu">=</span> nonClusteredParams 
+  { isDirected <span class="fu">=</span> <span class="dt">True</span>
+  , globalAttributes <span class="fu">=</span> 
+      [ <span class="dt">GraphAttrs</span> [<span class="dt">RankDir</span> <span class="dt">FromLeft</span>] 
+      , <span class="dt">NodeAttrs</span>  [shape <span class="dt">DoubleCircle</span>]
+      ]
+  , fmtNode <span class="fu">=</span> \(a, _) <span class="ot">-&gt;</span> 
+      <span class="kw">let</span> attrs t <span class="fu">=</span> toLabel (title t) <span class="fu">:</span> taskStyle (taskState t) 
+      <span class="kw">in</span>  maybe [] attrs <span class="fu">$</span> findTaskF s a 
+  }
+
+<span class="ot">taskStyle ::</span> <span class="dt">TaskState</span> <span class="ot">-&gt;</span> [<span class="dt">Attribute</span>]
+taskStyle (<span class="dt">Created</span> <span class="dt">Task</span>) <span class="fu">=</span> []
+taskStyle (<span class="dt">Created</span> <span class="dt">Bug</span>) <span class="fu">=</span> [style filled, fillColor <span class="dt">Tomato</span>] 
+taskStyle <span class="dt">Completed</span> <span class="fu">=</span> [style filled, fillColor <span class="dt">LawnGreen</span>]</code></pre></div>
+</div>
+<div id="to-be-embellished" class="slide section level1">
+<h1>To Be Embellished</h1>
+<p><img src="./dags/tasks6.svg"/></p>
+</div>
+<div id="the-vampire-policy" class="slide section level1">
+<h1>The Vampire Policy</h1>
+<div align="center">
+<p><img width="600" src="./images/bela-lugosi.jpg"/></p>
+<blockquote>
+<p>&quot;Bug fixing strategy: forbid yourself to fix the bug. Instead, render the bug impossible by construction.&quot; --<a href="https://twitter.com/extempore2/status/417366903209091073">Paul Phillips</a></p>
+</blockquote>
+</div>
+</div>
+<div id="know-the-size-of-your-state-space" class="slide section level1">
+<h1>Know the size of your state space</h1>
+<div class="incremental">
+<div>
+<p>How many different values can this function possibly return?</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">f ::</span> () <span class="ot">-&gt;</span> <span class="dt">Bool</span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="know-the-size-of-your-state-space-1" class="slide section level1">
+<h1>Know the size of your state space</h1>
+<p>How many different values can this function possibly return?</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">f ::</span> () <span class="ot">-&gt;</span> <span class="dt">Bool</span> <span class="co">-- 2 possible values</span></code></pre></div>
+<div class="incremental">
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">g ::</span> () <span class="ot">-&gt;</span> <span class="dt">Int32</span> </code></pre></div>
+</div>
+</div>
+<div id="know-the-size-of-your-state-space-2" class="slide section level1">
+<h1>Know the size of your state space</h1>
+<p>How many different values can this function possibly return?</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">f ::</span> () <span class="ot">-&gt;</span> <span class="dt">Bool</span> <span class="co">-- 2 possible values</span></code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">g ::</span> () <span class="ot">-&gt;</span> <span class="dt">Int32</span> <span class="co">-- 2^32 possible values</span></code></pre></div>
+<div class="incremental">
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">k ::</span> () <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">Bool</span> <span class="dt">Int32</span></code></pre></div>
+</div>
+</div>
+<div id="know-the-size-of-your-state-space-3" class="slide section level1">
+<h1>Know the size of your state space</h1>
+<p>How many different values can this function possibly return?</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">f ::</span> () <span class="ot">-&gt;</span> <span class="dt">Bool</span> <span class="co">-- 2 possible values</span></code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">g ::</span> () <span class="ot">-&gt;</span> <span class="dt">Int32</span> <span class="co">-- 2^32 possible values</span></code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">k ::</span> () <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">Bool</span> <span class="dt">Int32</span> <span class="co">-- 2 + 2^32 possible values</span></code></pre></div>
+<div class="incremental">
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">h ::</span> () <span class="ot">-&gt;</span> (<span class="dt">Bool</span>, <span class="dt">Int32</span>)</code></pre></div>
+</div>
+</div>
+<div id="know-the-size-of-your-state-space-4" class="slide section level1">
+<h1>Know the size of your state space</h1>
+<p>How many different values can this function possibly return?</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">f ::</span> () <span class="ot">-&gt;</span> <span class="dt">Bool</span> <span class="co">-- 2 possible values</span></code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">g ::</span> () <span class="ot">-&gt;</span> <span class="dt">Int32</span> <span class="co">-- 2^32 possible values</span></code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">k ::</span> () <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">Bool</span> <span class="dt">Int32</span> <span class="co">-- 2 + 2^32 possible values</span></code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">h ::</span> () <span class="ot">-&gt;</span> (<span class="dt">Bool</span>, <span class="dt">Int32</span>) <span class="co">-- 2 * 2^32 = 2^33 possible values</span></code></pre></div>
+<div class="incremental">
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">h ::</span> () <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">Int32</span> <span class="dt">Int32</span> <span class="co">-- 2^32 + 2^32 = 2^33 possible values</span></code></pre></div>
+</div>
+<div class="incremental">
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">k ::</span> () <span class="ot">-&gt;</span> <span class="dt">Text</span></code></pre></div>
+</div>
+</div>
+<div id="know-the-size-of-your-state-space-5" class="slide section level1">
+<h1>Know the size of your state space</h1>
+<p>How many different values can this function possibly return?</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">f ::</span> () <span class="ot">-&gt;</span> <span class="dt">Bool</span> <span class="co">-- 2 possible values</span></code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">g ::</span> () <span class="ot">-&gt;</span> <span class="dt">Int32</span> <span class="co">-- 2^32 possible values</span></code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">k ::</span> () <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">Bool</span> <span class="dt">Int32</span> <span class="co">-- 2 + 2^32 possible values</span></code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">h ::</span> () <span class="ot">-&gt;</span> (<span class="dt">Bool</span>, <span class="dt">Int32</span>) <span class="co">-- 2 * 2^32 = 2^33 possible values</span></code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">h ::</span> () <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">Int32</span> <span class="dt">Int32</span> <span class="co">-- 2^32 + 2^32 = 2^33 possible values</span></code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">k ::</span> () <span class="ot">-&gt;</span> <span class="dt">Text</span> <span class="co">-- 😬😖😩😷</span></code></pre></div>
+</div>
+<div id="use-smart-constructors-aka-parsers-wherever-errors-can-occur" class="slide section level1">
+<h1>Use smart constructors (aka parsers) wherever errors can occur</h1>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">insertTaskF ::</span> (<span class="dt">Ord</span> a)
+           <span class="ot">=&gt;</span> <span class="dt">TaskStore</span> n a
+           <span class="ot">-&gt;</span> a 
+           <span class="ot">-&gt;</span> <span class="dt">TaskF</span> n a 
+           <span class="ot">-&gt;</span> <span class="dt">Either</span> (<span class="dt">NonEmpty</span> a) (<span class="dt">TaskStore</span> n a)</code></pre></div>
+</div>
+<div id="final-principles-to-code-by" class="slide section level1">
+<h1>Final principles to code by</h1>
+<ul class="incremental">
+<li>Make invalid states unrepresentable.</li>
+<li>Give the minimum possible power to a function's implementer, and the maximum possible flexibility to its caller.</li>
+<li>Type polymorphism reduces the number of things a function can possibly do. Use it.</li>
+<li>Strings should appear in your program only where they're being show to a human being.</li>
+</ul>
+</div>
+<div id="extra-bonus-quiz" class="slide section level1">
+<h1>Extra bonus quiz!</h1>
+<div class="incremental">
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">T</span> a b <span class="fu">=</span> forall c<span class="fu">.</span> (a <span class="ot">-&gt;</span> b <span class="ot">-&gt;</span> c) <span class="ot">-&gt;</span> c
+
+<span class="kw">type</span> <span class="dt">E</span> a b <span class="fu">=</span> forall c<span class="fu">.</span> (a <span class="ot">-&gt;</span> c) <span class="ot">-&gt;</span> (b <span class="ot">-&gt;</span> c) <span class="ot">-&gt;</span> c</code></pre></div>
+</div>
+<div class="incremental">
+<div>
+<p>How many different values can these functions possibly return?</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">f ::</span> () <span class="ot">-&gt;</span> <span class="dt">T</span> <span class="dt">Bool</span> <span class="dt">Int32</span>
+
+<span class="ot">g ::</span> () <span class="ot">-&gt;</span> <span class="dt">E</span> <span class="dt">Bool</span> <span class="dt">Int32</span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="extra-bonus-quiz-1" class="slide section level1">
+<h1>Extra bonus quiz!</h1>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">T</span> a b <span class="fu">=</span> forall c<span class="fu">.</span> (a <span class="ot">-&gt;</span> b <span class="ot">-&gt;</span> c) <span class="ot">-&gt;</span> c
+
+<span class="kw">type</span> <span class="dt">E</span> a b <span class="fu">=</span> forall c<span class="fu">.</span> (a <span class="ot">-&gt;</span> c) <span class="ot">-&gt;</span> (b <span class="ot">-&gt;</span> c) <span class="ot">-&gt;</span> c</code></pre></div>
+<p>How many different values can these functions possibly return?</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">f ::</span> () <span class="ot">-&gt;</span> <span class="dt">T</span> <span class="dt">Bool</span> <span class="dt">Int32</span> <span class="co">-- 2 * 2^32 = 2^33 possible values!</span>
+
+<span class="ot">g ::</span> () <span class="ot">-&gt;</span> <span class="dt">E</span> <span class="dt">Bool</span> <span class="dt">Int32</span> <span class="co">-- 2 + 2^32 possible values!</span></code></pre></div>
+</div>
+</body>
+</html>

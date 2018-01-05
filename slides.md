@@ -11,7 +11,7 @@
 > - Write down a failing test case for a specific feature. This test will be incomplete and wrong.
 > - Write code until that test passes (solving the wrong problem).
 > - Iterate
-> - You tend to work bottom-up. But at the beginning of a project, you don't know what those leaves of the problem look like
+> - You tend to work bottom-up. But at the beginning of a project, you don't know what those leaves of the problem look like!
 
 # Type-Driven Development
 
@@ -19,10 +19,17 @@
 > - Look at your type. 
 > - Does it represent all the states you need?  Write a proof that it does!
 > - Does it imply some states you don't want in your program? Introduce some new types to narrow things down (recurse!)
-> - You tend to work more top-down, starting from the things that you understand, and then refining your solution.
+> - You tend to work more top-down, starting from the things that you understand, and then refining the parts of your system.
 
 # Chicken Sexing
 
+<div align="center">
+<img width="600" src="images/chicken_sexing.jpg"/>
+
+> -- [anecdote via \@garybernhardt](https://twitter.com/garybernhardt/status/947260894609686529)
+</div>
+
+<div class="notes">
 > In the book Incognito by David Eagelman, the author discusses the strange
 > nature of chicken sexing. This is the valuable process of separating female
 > and male chicks as soon as possible, because each sex has different diets and
@@ -34,9 +41,6 @@
 > generally correct observation. After a few weeks, the student’s brain was
 > trained to masterful levels.  
 >
-> -- [Erik Falkenstein](http://www.businessinsider.com/the-incredible-intuition-of-professional-chicken-sexers-2012-3)
-
-<div class="notes">
 
 This is all to say that what I'm going to be talking about and attempting to
 teach today is not something that I feel that I'm capable of reducing to a
@@ -54,7 +58,7 @@ of software feels a lot like looking at a chicken's butt.
 
 # DAGs for Task Management
 
-<img src="./dags/tasks1.svg"/>
+<img src="./dags/tasks0.svg"/>
 
 <div class="notes">
 
@@ -81,6 +85,10 @@ Furthermore, I want to be able to add up the estimates for the dependencies
 of a task to get an estimate for the overall task. 
 
 </div>
+
+# A simple task type
+
+<img src="./dags/tasks1.svg"/>
 
 # A simple task type
 
@@ -677,3 +685,190 @@ taskStyle Completed = [style filled, fillColor LawnGreen]
 # To Be Embellished
 
 <img src="./dags/tasks6.svg"/>
+
+# The Vampire Policy
+
+<div align="center">
+<img width="600" src="./images/bela-lugosi.jpg"/>
+
+> "Bug fixing strategy: forbid yourself to fix the bug. Instead, render 
+> the bug impossible by construction." 
+> --[Paul Phillips](https://twitter.com/extempore2/status/417366903209091073)
+</div>
+
+# Know the size of your state space
+
+<div class="incremental"><div>
+How many different values can this function possibly return?
+
+~~~haskell
+f :: () -> Bool
+~~~
+</div></div>
+
+# Know the size of your state space
+
+How many different values can this function possibly return?
+
+~~~haskell
+f :: () -> Bool -- 2 possible values
+~~~
+
+<div class="incremental">
+~~~haskell
+g :: () -> Int32 
+~~~
+</div>
+
+# Know the size of your state space
+
+How many different values can this function possibly return?
+
+~~~haskell
+f :: () -> Bool -- 2 possible values
+~~~
+
+~~~haskell
+g :: () -> Int32 -- 2^32 possible values
+~~~
+
+<div class="incremental">
+~~~haskell
+k :: () -> Either Bool Int32
+~~~
+</div>
+
+# Know the size of your state space
+
+How many different values can this function possibly return?
+
+~~~haskell
+f :: () -> Bool -- 2 possible values
+~~~
+
+~~~haskell
+g :: () -> Int32 -- 2^32 possible values
+~~~
+
+~~~haskell
+k :: () -> Either Bool Int32 -- 2 + 2^32 possible values
+~~~
+
+<div class="incremental">
+~~~haskell
+h :: () -> (Bool, Int32)
+~~~
+</div>
+
+# Know the size of your state space
+
+How many different values can this function possibly return?
+
+~~~haskell
+f :: () -> Bool -- 2 possible values
+~~~
+
+~~~haskell
+g :: () -> Int32 -- 2^32 possible values
+~~~
+
+~~~haskell
+k :: () -> Either Bool Int32 -- 2 + 2^32 possible values
+~~~
+
+~~~haskell
+h :: () -> (Bool, Int32) -- 2 * 2^32 = 2^33 possible values
+~~~
+
+<div class="incremental">
+~~~haskell
+h :: () -> Either Int32 Int32 -- 2^32 + 2^32 = 2^33 possible values
+~~~
+</div>
+
+<div class="incremental">
+~~~haskell
+k :: () -> Text
+~~~
+</div>
+
+# Know the size of your state space
+
+How many different values can this function possibly return?
+
+~~~haskell
+f :: () -> Bool -- 2 possible values
+~~~
+
+~~~haskell
+g :: () -> Int32 -- 2^32 possible values
+~~~
+
+~~~haskell
+k :: () -> Either Bool Int32 -- 2 + 2^32 possible values
+~~~
+
+~~~haskell
+h :: () -> (Bool, Int32) -- 2 * 2^32 = 2^33 possible values
+~~~
+
+~~~haskell
+h :: () -> Either Int32 Int32 -- 2^32 + 2^32 = 2^33 possible values
+~~~
+
+~~~haskell
+k :: () -> Text -- 😬😖😩😷
+~~~
+
+# Use smart constructors (aka parsers) wherever errors can occur
+
+~~~haskell
+insertTaskF :: (Ord a)
+           => TaskStore n a
+           -> a 
+           -> TaskF n a 
+           -> Either (NonEmpty a) (TaskStore n a)
+~~~
+
+# Final principles to code by
+
+> - Make invalid states unrepresentable.
+> - Give the minimum possible power to a function's implementer, and the maximum possible flexibility to its caller.
+> - Type polymorphism reduces the number of things a function can possibly do. Use it.
+> - Strings should appear in your program only where they're being show to a human being.
+
+# Extra bonus quiz!
+
+<div class="incremental">
+~~~haskell
+type T a b = forall c. (a -> b -> c) -> c
+
+type E a b = forall c. (a -> c) -> (b -> c) -> c
+~~~
+</div>
+
+<div class="incremental"><div>
+How many different values can these functions possibly return?
+
+~~~haskell
+f :: () -> T Bool Int32
+
+g :: () -> E Bool Int32
+~~~
+</div></div>
+
+# Extra bonus quiz!
+
+~~~haskell
+type T a b = forall c. (a -> b -> c) -> c
+
+type E a b = forall c. (a -> c) -> (b -> c) -> c
+~~~
+
+How many different values can these functions possibly return?
+
+~~~haskell
+f :: () -> T Bool Int32 -- 2 * 2^32 = 2^33 possible values!
+
+g :: () -> E Bool Int32 -- 2 + 2^32 possible values!
+~~~

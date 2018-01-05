@@ -58,6 +58,13 @@ findTask s ref = do
   root <- maybe (Left $ ref :| []) Right (findTaskF s ref)
   embed <$> (toEither $ traverse (fromEither . findTask s) root)
 
+insertTaskF :: (Ord a)
+           => TaskStore n a
+           -> a 
+           -> TaskF n a 
+           -> Either (NonEmpty a) (TaskStore n a)
+insertTaskF = undefined
+
 transitiveDeps :: (Ord a) => TaskStore n a -> a -> [a]
 transitiveDeps s a = do
   task <- F.toList $ findTaskF s a

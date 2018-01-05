@@ -2,13 +2,13 @@ digraph G {
   rankdir="LR";
   node [shape=doublecircle]
   tt  [label="Build a\ntask tracker"]
-  ct  [label="Create a\ntask type"; style="filled"; fillcolor="slategray"]
+  ct  [label="Create a\ntask type"]
   ptg [label="Print a\ntask graph"]
   ptc [label="Print\ntask costs"]
   qt  [label="Query\ntasks"]
   bts [label="Build task\nstorage"]
-  ctc [label="Compute the\ncost of a task"; style="filled"; fillcolor="lawngreen"]
-  ttd [label="Traverse task\ndependencies"; style="filled"; fillcolor="lawngreen"]
+  ctc [label="Compute the\ncost of a task"]
+  ttd [label="Traverse task\ndependencies"]
 
   tt  -> ptg
   ptg -> qt
@@ -22,3 +22,4 @@ digraph G {
   ttd -> ct
   ctc -> ttd
 }
+

@@ -6,20 +6,25 @@
 - Slides: [nuttycom.github.io/lc_winter-2018-tdd](http://nuttycom.github.io/lc_winter-2018-tdd)
 - Sources: [github.com/nuttycom/lc_winter-2018-tdd](https://github.com/nuttycom/lc_winter-2018-tdd)
 
-# Test-Driven Development
+# TDD?
+<div class="incremental"><div>
+## Test-Driven Development
 
-> - Write down a failing test case for a specific feature. This test will be incomplete and wrong.
-> - Write code until that test passes (solving the wrong problem).
-> - Iterate
-> - You tend to work bottom-up. But at the beginning of a project, you don't know what those leaves of the problem look like!
+> * Write down a failing test case for a specific feature. This test will be incomplete and wrong.
+> * Write code until that test passes (solving the wrong problem).
+> * Iterate
+</div></div>
 
-# Type-Driven Development
+<div class="incremental"><div>
+## Type-Driven Development
 
-> - Write down the problem as some types - both data and operations. Avoid implementation concerns.
-> - Look at your type. 
-> - Does it represent all the states you need?  Write a proof that it does!
-> - Does it imply some states you don't want in your program? Introduce some new types to narrow things down (recurse!)
-> - You tend to work more top-down, starting from the things that you understand, and then refining the parts of your system.
+> * Write down the problem as some types - both data and operations. Avoid implementation concerns.
+> * Look at your type. 
+>     * Does it represent all the states you need? 
+>         * **Write a proof.**
+>     * Does it imply some states you don't want in your program? 
+>         * **Introduce types to eliminate those states (recurse.)**
+</div></div>
 
 # Chicken Sexing
 

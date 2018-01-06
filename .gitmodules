@@ -1,0 +1,9 @@
+[submodule "xenomorph/sample_code/thx.schema"]
+	path = xenomorph/sample_code/thx.schema
+	url = https://github.com/nuttycom/thx.schema.git
+[submodule "xenomorph/sample_code/thx.json"]
+	path = xenomorph/sample_code/thx.json
+	url = https://github.com/nuttycom/thx.json.git
+[submodule "xenomorph/sample_code/xenomorph"]
+	path = xenomorph/sample_code/xenomorph
+	url = https://github.com/nuttycom/xenomorph.git

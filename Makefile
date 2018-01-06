@@ -10,8 +10,7 @@ all: slidy
 
 graphs: $(patsubst %.dot,docs/%.svg,$(wildcard dags/*.dot))
 
-slidy: slides.md graphs
-	$(PANDOC) -t slidy --standalone --section-divs --highlight-style pygments slides.md -o docs/slides.slidy.html -V slidy-url="."
+slidy: tdd/slides.md xenomorph/slides.md graphs
+	$(PANDOC) -t slidy --standalone --section-divs --highlight-style pygments tdd/slides.md -o docs/tdd.html -V slidy-url="."
+	$(PANDOC) -t slidy --standalone --section-divs --highlight-style pygments xenomorph/slides.md -o docs/xenomorph.html -V slidy-url="."
 
-index: slidy
-	cp docs/slides.slidy.html docs/index.html

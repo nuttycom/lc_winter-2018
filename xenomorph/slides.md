@@ -23,7 +23,7 @@
 
 ## Resources
 * Slides: [nuttycom.github.io/lc_winter-2018/xenomorph.html](http://nuttycom.github.io/lc_winter-2018/xenomorph.html)
-* Sources: [github.com/nuttycom/lc_winter-2018/xenomorph.html](https://github.com/nuttycom/lc_winter-2018/xenomorph.html)
+* Sources: [github.com/nuttycom/lc_winter-2018/xenomorph](https://github.com/nuttycom/lc_winter-2018/xenomorph)
 * Xenomorph: [github.com/nuttycom/xenomorph/tree/tutorial](https://github.com/nuttycom/xenomorph/tree/tutorial)
 
 # Overview

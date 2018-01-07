@@ -9,6 +9,7 @@ dependencies:
   - base >= 4.7 && < 5
   - comonad
   - containers
+  - graphviz
   - lens
   - mtl
   - recursion-schemes

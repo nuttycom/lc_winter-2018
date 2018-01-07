@@ -22,8 +22,8 @@
 * Coproducts
 
 ## Resources
-* Slides: [nuttycom.github.io/scala_world-2017](http://nuttycom.github.io/scala_world-2017)
-* Sources: [github.com/nuttycom/scala_world-2017](https://github.com/nuttycom/scala_world-2017)
+* Slides: [nuttycom.github.io/lc_winter-2018/xenomorph.html](http://nuttycom.github.io/lc_winter-2018/xenomorph.html)
+* Sources: [github.com/nuttycom/lc_winter-2018/xenomorph.html](https://github.com/nuttycom/lc_winter-2018/xenomorph.html)
 * Xenomorph: [github.com/nuttycom/xenomorph/tree/tutorial](https://github.com/nuttycom/xenomorph/tree/tutorial)
 
 # Overview
@@ -1363,7 +1363,7 @@ def forget[F[_[_], _]: HFunctor, A]: (HCofree[A, F, ?] ~> HFix[F, ?]) = cata(for
 The Scala compiler hates me.
 
 ~~~
-[error] /Users/nuttycom/personal/scala_world-2017/sample_code/xenomorph/src/main/scala/xenomorph/Schema.scala:263: type mismatch;
+[error] /Users/nuttycom/projects/lc_winter-2018/xenomorph/sample_code/xenomorph/src/main/scala/xenomorph/Schema.scala:263: type mismatch;
 [error]  found   : [γ$13$]xenomorph.PropSchema[O,[γ$40$]xenomorph
 .HCofree[[β$0$[_$1], γ$1$]xenomorph
 .SchemaF[P,β$0$,γ$1$],A,γ$40$],γ$13$] ~> [γ$14$]xenomorph.PropSchema[N,[γ$40$]xenomorph

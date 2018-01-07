@@ -3,8 +3,8 @@
 
 # Resources
 
-- Slides: [nuttycom.github.io/lc_winter-2018-tdd](http://nuttycom.github.io/lc_winter-2018-tdd)
-- Sources: [github.com/nuttycom/lc_winter-2018-tdd](https://github.com/nuttycom/lc_winter-2018-tdd)
+- Slides: [nuttycom.github.io/lc_winter-2018/tdd.html](http://nuttycom.github.io/lc_winter-2018/tdd.html)
+- Sources: [github.com/nuttycom/lc_winter-2018/tdd.html](https://github.com/nuttycom/lc_winter-2018/tdd.html)
 
 # TDD?
 <div class="incremental"><div>
@@ -686,6 +686,14 @@ taskStyle (Created Task) = []
 taskStyle (Created Bug) = [style filled, fillColor Tomato] 
 taskStyle Completed = [style filled, fillColor LawnGreen]
 ~~~
+
+# Graphing!
+
+<img src="./images/graphElemsToDot.png" width="100%"/>
+
+# Graphing!
+
+<img src="./images/GraphvizParams.png" height="600"/>
 
 # To Be Embellished
 

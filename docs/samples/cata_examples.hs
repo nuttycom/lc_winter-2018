@@ -83,5 +83,26 @@ either :: (a -> c) -> (b -> c) -> Either a b -> c
 Prelude> let addorsub' = either (\a -> a - 1) (\b -> b + 1)
 Prelude> addorsub' (Left 1)
 0
-Prelude>
+Prelude> :{
+Prelude| let badleft :: a -> E a b
+Prelude|     badleft a = (\l r -> r a)
+Prelude| :}
 
+<interactive>:48:28: error:
+    • Couldn't match expected type ‘b’ with actual type ‘a’
+      ‘a’ is a rigid type variable bound by
+        the type signature for:
+          badleft :: forall a b. a -> E a b
+        at <interactive>:47:5-25
+      ‘b’ is a rigid type variable bound by
+        the type signature for:
+          badleft :: forall a b. a -> E a b
+        at <interactive>:47:5-25
+    • In the first argument of ‘r’, namely ‘a’
+      In the expression: r a
+      In the expression: (\ l r -> r a)
+    • Relevant bindings include
+        r :: b -> c (bound at <interactive>:48:21)
+        l :: a -> c (bound at <interactive>:48:19)
+        a :: a (bound at <interactive>:48:13)
+        badleft :: a -> E a b (bound at <interactive>:48:5)

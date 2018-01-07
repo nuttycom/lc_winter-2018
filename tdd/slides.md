@@ -4,7 +4,7 @@
 # Resources
 
 - Slides: [nuttycom.github.io/lc_winter-2018/tdd.html](http://nuttycom.github.io/lc_winter-2018/tdd.html)
-- Sources: [github.com/nuttycom/lc_winter-2018/tdd](https://github.com/nuttycom/lc_winter-2018/tdd)
+- Sources: [github.com/nuttycom/lc_winter-2018/tree/master/tdd](https://github.com/nuttycom/lc_winter-2018/tree/master/tdd)
 
 # TDD?
 <div class="incremental"><div>
